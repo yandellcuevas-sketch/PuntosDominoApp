@@ -11,34 +11,6 @@ workflows:
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
-        CERTIFICATE_PRIVATE_KEY: |
-          -----BEGIN RSA PRIVATE KEY-----
-          MIIEowIBAAKCAQEAnLy2+HXWaaYstTwXy+m9qA6oEdUuFe7lBkhvBLzI1In6aj/K
-          JvUSaiz1nh2KjYusrUNhO8Ni7+KAyRIXzbjocXjngyoBuYluKkbrY0Fuw/XspheX
-          +xeECkmDjsRBC8IqiEdzQbKIxmvjA5Jfiqdh+5J7yWJHUd4VPmqtK2avRrP067rb
-          g+vsrUliqAxHth80WWZQ3HNibqB60PRkCTlNZUTiQKYqlyupu+2WupMfhxK1rlIa
-          vk2+6OUBT6axf1fFtCvqqPrtCoX2pW9UYYSJBWRbNrM98ir+lwRPK+veJRjFWgDv
-          GIuseRsqxhMuHfbGiQLJ1AuDwDZRUaGe4oqn1wIDAQABAoIBAAyoAG5XtZSaYonP
-          7Gv+1922MUQfXrVOsResyaosRFtFOP9TX1N9/pqsPrkh0YpUeQEUq8lToa2VMKkL
-          2Pg3si1XgfpJbhI5Urf/Ogqtwe/4778JsLAJ2hOqlAD3P/lfGGggvOHVNM4w8Afd
-          zfE4SuUxkuVUFkY6FKURoCIdDJI83XF7NBlsSYZkdjwW1XoqkuDQsnNSzJqugqJp
-          8k6dmuZscdoK9PX4266P4F2JiZMqlrjG0fXcXzkhE64G/PwTolr/itexrFbDK08j
-          uZLvfW1mseTDyTAcPbvWpmKGuj1lD8k+MzM7oDURNYFNfBa7n2BMvPjrVSTyAKrI
-          8p3GDOECgYEAzcXBJ1KhDRNX3GVpxenHRbAyKImDbvcVsZwR5uJSTpoIhqdwruOg
-          C1Y9ZG154VYqYBE9Ya1CyAXR8nPI3EgjTlkKmCRA9LyI/HaAmghl1pWBqVgrt8O9
-          uqE8w1kB/zV5cxDPMCvZBQJ6k3E3INvrs1Eg8UY57J1SnNl8MgxHi4UCgYEAwv7b
-          cQSTSw64mvAm+n5cVQ1DesD6Z001Y5MXR4Z+0bUD17R0CCMbTxcmFvMHe+IlMgpV
-          abLjoayvwOv9zuAZpUgTTSMtfNSwDsau1qnzh2/hLlDOcazoDGv9O0VpWZve7Plg
-          W5cIyd9vguR8M8D+M7rgPINa4BJ7t7iA4fdRfqsCgYAh8O6NR+ncuEYTyn6J8Ke3
-          7Po5CYWudf8UDsQ9KzOcV3f0jgXeMxmhBRaXTB+AdbADrJRNWkDbsWoR7dtBynxY
-          XgOLWN+F/tsxmXJY9e2mWX7Lqgl8BEN1V0coibP0nqNrwWgLcBAZ7XC+hTwspVnZ
-          eBZQ9d50EvcffBgqQTBD6QKBgDOyW71f6CkLExhIuRzKKXKHHK/Lv9dpWdE3awGU
-          f8TbR9SFTAnoPNJAIeINtps6foAAy1pFiiIP5VyxdE3HjiUKsctOmz2wKakRNcNF
-          tYHfwISF+eWbYL4CV1XCdkbCk1yiVNCTf0n+CdNa/i6+aOaQEekZLhuf6trveIPw
-          DNQXAoGBAKK2Ch50YknzlVbqKTn0469aRssmj5PlNhdDxGCEohkbS+j+qrQBEZbo
-          d9s/rXVJcGXppTwnmelO7+qeTXeyZXjI30In5qjh/0ctCRv5m+D6halKuqo7yTwR
-          QCwAa4ZTREirw+QrdyiZdqrMIyVpXftHCqH2MfJiTHApcVm6+nGT
-          -----END RSA PRIVATE KEY-----
     scripts:
       - name: Install npm dependencies
         script: npm install
@@ -52,7 +24,7 @@ workflows:
           xcode-project use-profiles --project "$XCODE_PROJECT"
       - name: Build IPA
         script: |
-          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME" --export-options-plist "/Users/builder/export_options.plist"
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
