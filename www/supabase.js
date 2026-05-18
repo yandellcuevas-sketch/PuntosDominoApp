@@ -181,7 +181,7 @@ async function fb_getProfile() {
     try {
         const { data, error } = await supabaseClient
             .from('profiles')
-            .select('username, avatar')
+            .select('username, avatar, history')
             .eq('id', user.id)
             .maybeSingle();
             

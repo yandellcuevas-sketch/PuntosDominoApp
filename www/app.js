@@ -1243,7 +1243,7 @@ function initLoginScreen() {
     window.onSessionRestored = async () => {
         if (!state.game) showScreen('screen-setup');
         
-        // Sync profile from Supabase
+        // Sync profile and history from Supabase
         if (typeof fb_getProfile === 'function') {
             const prof = await fb_getProfile();
             if (prof) {
@@ -1251,6 +1251,12 @@ function initLoginScreen() {
                 state.profile.avatar = prof.avatar || '👤';
                 localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
                 updateProfileUI();
+                
+                if (prof.history) {
+                    state.history = prof.history;
+                    localStorage.setItem(LS_HISTORY, JSON.stringify(state.history));
+                    if (typeof renderHistory === 'function') renderHistory();
+                }
             }
         }
     };
@@ -1305,9 +1311,11 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
     window.Capacitor.Plugins.App.addListener('backButton', () => {
         const currentScreen = document.querySelector('.screen.active');
         if (currentScreen && currentScreen.id === 'screen-game') {
-            btn-back-to-setup.click();
+            const btn = $('btn-back-to-setup');
+            if (btn) btn.click();
         } else if (currentScreen && currentScreen.id === 'screen-history') {
-            btn-back-from-history.click();
+            const btn = $('btn-back-from-history');
+            if (btn) btn.click();
         } else {
             window.Capacitor.Plugins.App.exitApp();
         }
