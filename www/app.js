@@ -10,12 +10,14 @@ let state = {
     soundEnabled: true,
     historyFilter: 'all',
     historySearch: '',
+    profile: { username: '', avatar: '👤' } // Perfil de usuario
 };
 
 // ─── Keys de localStorage ─────────────────────────────────────────
 const LS_GAME = 'domino_active_game';
 const LS_HISTORY = 'domino_history';
 const LS_SOUND = 'domino_sound';
+const LS_PROFILE = 'domino_profile';
 
 // ─── AudioContext (Web Audio API) ────────────────────────────────
 let audioCtx = null;
@@ -85,7 +87,7 @@ function uid() {
     return Math.random().toString(36).substr(2, 9);
 }
 function showScreen(id) {
-    ['screen-setup', 'screen-game', 'screen-history'].forEach(s => {
+    ['screen-login', 'screen-setup', 'screen-game', 'screen-history'].forEach(s => {
         const el = $(s);
         if (!el) return;
         el.classList.add('hidden');
@@ -123,6 +125,10 @@ function loadStorage() {
     } catch (e) { state.history = []; }
     const s = localStorage.getItem(LS_SOUND);
     state.soundEnabled = s === null ? true : s === 'true';
+    try {
+        const p = localStorage.getItem(LS_PROFILE);
+        if (p) state.profile = JSON.parse(p);
+    } catch (e) { state.profile = { username: '', avatar: '👤' }; }
 }
 
 function generateShortCode() {
@@ -262,6 +268,21 @@ function initSetupScreen() {
     });
     $('btn-import').addEventListener('click', () => $('import-file').click());
     $('import-file').addEventListener('change', handleImport);
+
+    const btnLogout = $('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            confirmAction('¿Cerrar Sesión?', 'Volverás a la pantalla de inicio y saldrás de tu cuenta. Se borrará la partida actual no guardada.', async () => {
+                localStorage.removeItem(LS_GAME);
+                try {
+                    if (typeof doLogout === 'function') await doLogout();
+                } catch (e) {
+                    console.warn("Supabase logout falló, forzando cierre local:", e);
+                }
+                window.location.reload(); // Recargar siempre
+            });
+        });
+    }
 
     // Sound toggle setup
     $('btn-sound-toggle').addEventListener('click', toggleSound);
@@ -523,7 +544,7 @@ function initGameControls() {
         });
     });
 
-    $('btn-register').addEventListener('click', () => {
+    $('btn-register-pts').addEventListener('click', () => {
         const pts = parseInt($('manual-pts').value);
         const capi = $('chk-capi').checked;
         if (isNaN(pts) || $('manual-pts').value === '') return showGameError('Ingresa una cantidad de puntos.');
@@ -1191,13 +1212,16 @@ function init() {
         });
     }
 
+    initLoginScreen();
     initJoinControls();
     initSetupScreen();
     initGameControls();
     initHistoryControls();
     initConfirmModal();
     initEditModal();
+    initProfileModal();
     updateSoundIcons();
+    updateProfileUI();
 
     // Decide which screen to show
     if (state.game) {
@@ -1211,8 +1235,67 @@ function init() {
             saveGame();
         }
     } else {
-        showScreen('screen-setup');
+        showScreen('screen-login');
     }
+}
+
+function initLoginScreen() {
+    window.onSessionRestored = async () => {
+        if (!state.game) showScreen('screen-setup');
+        
+        // Sync profile from Supabase
+        if (typeof fb_getProfile === 'function') {
+            const prof = await fb_getProfile();
+            if (prof) {
+                state.profile.username = prof.username || '';
+                state.profile.avatar = prof.avatar || '👤';
+                localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
+                updateProfileUI();
+            }
+        }
+    };
+
+    const emailInput = $('login-email');
+    const pwdInput = $('login-password');
+    const errorMsg = $('login-error');
+
+    function showError(msg) {
+        errorMsg.textContent = msg;
+        errorMsg.classList.remove('hidden');
+        setTimeout(() => errorMsg.classList.add('hidden'), 4000);
+    }
+
+    $('btn-login').addEventListener('click', async () => {
+        try {
+            if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
+            await doLogin(emailInput.value, pwdInput.value);
+            showScreen('screen-setup');
+        } catch (e) {
+            console.error("Login Error:", e);
+            showError(e.message || 'Credenciales incorrectas');
+        }
+    });
+
+    $('btn-register').addEventListener('click', async () => {
+        try {
+            if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
+            await doRegister(emailInput.value, pwdInput.value);
+            showScreen('screen-setup');
+        } catch (e) {
+            console.error("Register Error:", e);
+            showError(e.message || 'Error al crear cuenta.');
+        }
+    });
+
+    $('btn-guest').addEventListener('click', async () => {
+        try {
+            await doGuestLogin();
+            showScreen('screen-setup');
+        } catch (e) {
+            console.error(e);
+            showError('Error: ' + (e.message || 'Error al entrar como invitado'));
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -1229,4 +1312,66 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
             window.Capacitor.Plugins.App.exitApp();
         }
     });
+}
+
+// ─── Profile Modal Handlers ─────────────────────────────────────────
+function initProfileModal() {
+    const trigger = $('btn-profile-trigger');
+    if (!trigger) return;
+    
+    trigger.addEventListener('click', () => {
+        $('profile-username').value = state.profile.username || '';
+        const currentAvatar = state.profile.avatar || '👤';
+        
+        // Highlight active avatar
+        document.querySelectorAll('.avatar-option').forEach(opt => {
+            opt.classList.toggle('selected', opt.dataset.emoji === currentAvatar);
+        });
+        
+        $('modal-profile').classList.remove('hidden');
+    });
+    
+    $('btn-profile-cancel').addEventListener('click', () => {
+        $('modal-profile').classList.add('hidden');
+    });
+    
+    // Avatar selection
+    document.querySelectorAll('.avatar-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+        });
+    });
+    
+    $('btn-profile-save').addEventListener('click', async () => {
+        const username = $('profile-username').value.trim();
+        const selectedOpt = document.querySelector('.avatar-option.selected');
+        const avatar = selectedOpt ? selectedOpt.dataset.emoji : '👤';
+        
+        state.profile.username = username;
+        state.profile.avatar = avatar;
+        
+        localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
+        updateProfileUI();
+        
+        $('modal-profile').classList.add('hidden');
+        
+        // Save to Supabase
+        if (typeof fb_saveProfile === 'function') {
+            await fb_saveProfile(username, avatar);
+        }
+    });
+}
+
+function updateProfileUI() {
+    const el = $('profile-avatar-emoji');
+    if (el) el.textContent = state.profile.avatar || '👤';
+    
+    // Si el usuario tiene nombre, auto-llenar Jugador 1 de Equipo 1
+    if (state.profile.username) {
+        const t1p1 = $('t1p1');
+        if (t1p1 && !t1p1.value) {
+            t1p1.value = state.profile.username;
+        }
+    }
 }

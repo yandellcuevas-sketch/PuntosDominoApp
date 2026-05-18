@@ -1,56 +1,103 @@
 const SUPABASE_URL = 'https://zfrthbupraufxhgbmgmh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_VcuOeLUk127F4UvAchf1Xw_s_xVA-VR';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 
-// ─── Autenticación (Modo Invitado por defecto) ─────────────────────
+// ─── Autenticación Visual ─────────────────────
+async function doLogin(email, password) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    currentUser = data.user;
+    return data.user;
+}
+
+async function doRegister(email, password) {
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) throw error;
+    currentUser = data.user;
+    return data.user;
+}
+
+async function doGuestLogin() {
+    const { data, error } = await supabaseClient.auth.signInAnonymously();
+    if (error) throw error;
+    currentUser = data.user;
+    return data.user;
+}
+
+async function doLogout() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+    currentUser = null;
+}
+
+// Chequear sesión al cargar
 async function initSupabaseAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
         currentUser = session.user;
-    } else {
-        // Sign in anonymously
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) {
-            console.error('Error signing in anonymously', error);
-        } else {
-            currentUser = data.user;
+        // Si hay sesión, ir al setup directo
+        if (typeof window.onSessionRestored === 'function') {
+            window.onSessionRestored();
         }
     }
 }
-
-// Inicializar auth al cargar
 initSupabaseAuth();
 
 // ─── Funciones de Persistencia Online (Supabase) ───────────────────
 async function fb_saveGame(gameData) {
-    if (!gameData || !gameData.id || !currentUser) return;
+    if (!gameData) { alert("fb_saveGame abortado: gameData nulo"); return; }
+    if (!gameData.id) { alert("fb_saveGame abortado: sin ID"); return; }
+    
+    let { data: { session } } = await supabaseClient.auth.getSession();
+    let user = session?.user;
+    
+    if (!user) { 
+        // Login de emergencia si el navegador lo borró por error
+        console.warn("Sesión perdida. Intentando login de emergencia...");
+        const res = await supabaseClient.auth.signInAnonymously();
+        if (res.data && res.data.user) {
+            user = res.data.user;
+        } else {
+            alert("Error fatal: Supabase rechazó la conexión anónima. ¿Están activados los invitados en el panel?"); 
+            return; 
+        }
+    }
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('games')
             .upsert({ 
                 id: gameData.id, 
-                user_id: currentUser.id,
+                user_id: user.id,
+                code: gameData.code,
                 data: gameData,
                 updated_at: new Date().toISOString()
             });
             
-        if (error) console.error('Error saving game to Supabase:', error);
+        if (error) {
+            console.error('Error saving game to Supabase:', error);
+            alert("Error al guardar la partida en la nube: " + error.message);
+        }
     } catch (e) {
         console.error('Network error saving game:', e);
+        alert("Error de red al guardar la partida en la nube: " + e.message);
     }
 }
 
 async function fb_saveHistory(historyData) {
-    if (!historyData || !currentUser) return;
+    if (!historyData) return;
+    
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const user = session?.user;
+    if (!user) return;
     
     try {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('profiles')
             .upsert({ 
-                id: currentUser.id,
+                id: user.id,
                 history: historyData,
                 updated_at: new Date().toISOString()
             });
@@ -65,10 +112,28 @@ let currentGameSubscription = null;
 
 function fb_setRoomCode(code) {
     if (currentGameSubscription) {
-        supabase.removeChannel(currentGameSubscription);
+        supabaseClient.removeChannel(currentGameSubscription);
     }
     
-    currentGameSubscription = supabase.channel('custom-all-channel')
+    // Obtener estado actual primero (para espectadores que acaban de entrar)
+    supabaseClient
+        .from('games')
+        .select('data')
+        .eq('code', code)
+        .maybeSingle()
+        .then(({ data, error }) => {
+            if (error) {
+                console.warn("No se pudo cargar la partida inicial:", error.message);
+            }
+            if (!error && data && data.data && typeof window.fb_onGameChangeCallback === 'function') {
+                window.fb_onGameChangeCallback(data.data);
+            } else if (typeof window.fb_onGameChangeCallback === 'function') {
+                // Notificar a la UI que no se encontró para que muestre el mensaje rojo
+                window.fb_onGameChangeCallback(null);
+            }
+        });
+    
+    currentGameSubscription = supabaseClient.channel('custom-all-channel')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'games', filter: `code=eq.${code}` },
@@ -83,5 +148,51 @@ function fb_setRoomCode(code) {
 
 function fb_onGameChange(callback) {
     window.fb_onGameChangeCallback = callback;
+}
+
+// ─── Guardar Perfil en Supabase ─────────────────
+async function fb_saveProfile(username, avatar) {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const user = session?.user;
+    if (!user) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .upsert({ 
+                id: user.id,
+                username: username,
+                avatar: avatar,
+                updated_at: new Date().toISOString()
+            });
+            
+        if (error) console.error('Error saving profile to Supabase:', error);
+    } catch (e) {
+        console.error('Network error saving profile:', e);
+    }
+}
+
+// ─── Obtener Perfil de Supabase ─────────────────
+async function fb_getProfile() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const user = session?.user;
+    if (!user) return null;
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('username, avatar')
+            .eq('id', user.id)
+            .maybeSingle();
+            
+        if (error) {
+            console.error('Error fetching profile from Supabase:', error);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        console.error('Network error fetching profile:', e);
+        return null;
+    }
 }
 

@@ -2,6 +2,7 @@
 CREATE TABLE public.games (
     id text PRIMARY KEY,
     user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+    code text,
     data jsonb NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -9,6 +10,8 @@ CREATE TABLE public.games (
 -- 2. Crear tabla 'profiles' para guardar el perfil y estadísticas generales del usuario
 CREATE TABLE public.profiles (
     id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    username text,
+    avatar text,
     history jsonb DEFAULT '[]'::jsonb,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -18,9 +21,10 @@ ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para 'games'
-CREATE POLICY "Los usuarios pueden ver sus propias partidas" 
+-- PERMITE A LOS ESPECTADORES VER LA PARTIDA
+CREATE POLICY "Cualquiera puede ver las partidas" 
     ON public.games FOR SELECT 
-    USING (auth.uid() = user_id);
+    USING (true);
 
 CREATE POLICY "Los usuarios pueden insertar/actualizar sus propias partidas" 
     ON public.games FOR ALL 
