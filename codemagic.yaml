@@ -3,24 +3,31 @@ workflows:
     name: iOS Capacitor Build
     instance_type: mac_mini_m2
     max_build_duration: 60
-    integrations:
-      app_store_connect: "Puntos Domino"
     environment:
       node: latest
       xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.yandell.dominoscore
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
+        APP_STORE_CONNECT_ISSUER_ID: "295dffb2-3446-4cb8-8f2d-ea0cab1b1d17"
+        APP_STORE_CONNECT_KEY_IDENTIFIER: "7VH6Y3AM4C"
+        APP_STORE_CONNECT_PRIVATE_KEY: |
+          -----BEGIN PRIVATE KEY-----
+          MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgPauanVQ2lL9cQr25
+          CXahtTU+uLxgPRYB4qN9rmJKOwqgCgYIKoZIzj0DAQehRANCAAStxdyadNGFVt6X
+          8H3ioFk9Y1WGTbfGhrzEeQsFK1gl4QjOtV4OKxy90HVB137lrQYTOpPix0X8ZeT5
+          d4p/iA5R
+          -----END PRIVATE KEY-----
     scripts:
       - name: Install npm dependencies
         script: npm install
       - name: Capacitor Sync
         script: npx cap sync ios
-      - name: Set up code signing
-        script: xcode-project use-profiles
+      - name: Fetch signing files
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "com.yandell.dominoscore" --type IOS_APP_STORE --create
+          xcode-project use-profiles
       - name: Build IPA
         script: |
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
@@ -29,5 +36,5 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        api_key: "Puntos Domino"
+        auth: integration
         submit_to_testflight: true
