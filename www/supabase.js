@@ -32,16 +32,30 @@ async function doLogout() {
     currentUser = null;
 }
 
+// ─── Splash Screen ───────────────────────────
+function hideSplash() {
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+        splash.classList.add('hide');
+        setTimeout(() => splash.remove(), 700);
+    }
+}
+
 // Chequear sesión al cargar
 async function initSupabaseAuth() {
+    const startTime = Date.now();
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
         currentUser = session.user;
-        // Si hay sesión, ir al setup directo
         if (typeof window.onSessionRestored === 'function') {
             window.onSessionRestored();
         }
     }
+    // Esperar al menos 2.2s para que se vea la animación completa
+    const elapsed = Date.now() - startTime;
+    const minDelay = 2200;
+    const remaining = Math.max(0, minDelay - elapsed);
+    setTimeout(hideSplash, remaining);
 }
 initSupabaseAuth();
 
