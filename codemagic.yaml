@@ -21,9 +21,9 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "com.yandell.dominoscore" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "com.yandell.dominoscore" --type IOS_APP_STORE --create --verbose
           keychain add-certificates
-          xcode-project use-profiles --project "$XCODE_PROJECT"
+          xcode-project use-profiles --project "$XCODE_PROJECT" --verbose
       - name: Build IPA
         script: |
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME" --export-options-plist "/Users/builder/export_options.plist"
