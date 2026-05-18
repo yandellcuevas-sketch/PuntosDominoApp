@@ -8,6 +8,8 @@ workflows:
     environment:
       node: latest
       xcode: latest
+      groups:
+        - appstore_credentials
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
