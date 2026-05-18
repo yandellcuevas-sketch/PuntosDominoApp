@@ -29,4 +29,5 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
+        api_key: "Puntos Domino"
         submit_to_testflight: true
