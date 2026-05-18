@@ -3,6 +3,8 @@ workflows:
     name: iOS Capacitor Build
     instance_type: mac_mini_m2
     max_build_duration: 60
+    integrations:
+      app_store_connect: "Puntos Domino"
     environment:
       node: latest
       xcode: latest
@@ -25,3 +27,6 @@ workflows:
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        submit_to_testflight: true
