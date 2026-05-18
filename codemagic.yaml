@@ -21,7 +21,14 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "com.yandell.dominoscore" --type IOS_APP_STORE --create --verbose
+          app-store-connect fetch-signing-files "com.yandell.dominoscore" \
+            --issuer-id @env:APP_STORE_CONNECT_ISSUER_ID \
+            --key-id @env:APP_STORE_CONNECT_KEY_IDENTIFIER \
+            --private-key @env:APP_STORE_CONNECT_PRIVATE_KEY \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
+            --type IOS_APP_STORE \
+            --create \
+            --verbose
           keychain add-certificates
           xcode-project use-profiles --project "$XCODE_PROJECT" --verbose
       - name: Build IPA
