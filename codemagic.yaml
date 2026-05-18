@@ -14,9 +14,14 @@ workflows:
         script: npm install
       - name: Capacitor Sync
         script: npx cap sync ios
-      - name: Build IPA
+      - name: Build and Verify iOS App
         script: |
-          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+          xcodebuild -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
     artifacts:
-      - ios/App/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
