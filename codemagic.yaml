@@ -20,7 +20,7 @@ workflows:
         script: |
           keychain initialize
           app-store-connect fetch-signing-files "com.yandell.dominoscore" --type IOS_APP_STORE --create
-          xcode-project use-profiles
+          xcode-project use-profiles --project "$XCODE_PROJECT"
       - name: Build IPA
         script: |
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
