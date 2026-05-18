@@ -8,9 +8,6 @@ workflows:
     environment:
       node: latest
       xcode: latest
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.yandell.dominoscore
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
@@ -19,6 +16,12 @@ workflows:
         script: npm install
       - name: Capacitor Sync
         script: npx cap sync ios
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "com.yandell.dominoscore" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles --project "$XCODE_PROJECT"
       - name: Build IPA
         script: |
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
