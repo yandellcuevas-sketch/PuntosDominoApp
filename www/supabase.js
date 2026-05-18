@@ -61,8 +61,7 @@ initSupabaseAuth();
 
 // ─── Funciones de Persistencia Online (Supabase) ───────────────────
 async function fb_saveGame(gameData) {
-    if (!gameData) { alert("fb_saveGame abortado: gameData nulo"); return; }
-    if (!gameData.id) { alert("fb_saveGame abortado: sin ID"); return; }
+    if (!gameData || !gameData.id) return;
     
     let { data: { session } } = await supabaseClient.auth.getSession();
     let user = session?.user;
