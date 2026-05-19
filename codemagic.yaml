@@ -56,6 +56,8 @@ workflows:
     environment:
       node: latest
       java: 17
+      android_signing:
+        - dominoscore
     scripts:
       - name: Install npm dependencies
         script: npm install
@@ -64,6 +66,10 @@ workflows:
       - name: Build Android App Bundle
         script: |
           cd android
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$CM_KEYSTORE_PATH" \
+            -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
