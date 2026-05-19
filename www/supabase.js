@@ -44,12 +44,22 @@ function hideSplash() {
 // Chequear sesión al cargar
 async function initSupabaseAuth() {
     const startTime = Date.now();
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) {
-        currentUser = session.user;
-        if (typeof window.onSessionRestored === 'function') {
+    try {
+        let { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            currentUser = session.user;
+        } else {
+            console.log("No session found, signing in anonymously...");
+            const res = await supabaseClient.auth.signInAnonymously();
+            if (res.error) throw res.error;
+            currentUser = res.data?.user || null;
+        }
+        
+        if (currentUser && typeof window.onSessionRestored === 'function') {
             window.onSessionRestored();
         }
+    } catch (e) {
+        console.error("Error during auto auth init:", e);
     }
     // Esperar al menos 2.2s para que se vea la animación completa
     const elapsed = Date.now() - startTime;
@@ -58,6 +68,7 @@ async function initSupabaseAuth() {
     setTimeout(hideSplash, remaining);
 }
 initSupabaseAuth();
+
 
 // ─── Funciones de Persistencia Online (Supabase) ───────────────────
 async function fb_saveGame(gameData) {

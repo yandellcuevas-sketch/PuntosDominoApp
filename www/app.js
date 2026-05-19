@@ -581,7 +581,13 @@ function initGameControls() {
     if (btnShare) {
         btnShare.addEventListener('click', () => {
             if (!state.game || !state.game.code) return;
-            const text = `¡Únete a mi partida de dominó! Código de sala: ${state.game.code}. Entra aquí: ${window.location.href}`;
+            let shareUrl = window.location.href;
+            if (shareUrl.includes('capacitor://') || shareUrl.includes('localhost') || shareUrl.includes('127.0.0.1')) {
+                shareUrl = 'https://yandellcuevas-sketch.github.io/PuntosDominoApp/';
+            }
+            const baseShareUrl = shareUrl.split('?')[0];
+            const finalShareUrl = `${baseShareUrl}?code=${state.game.code}`;
+            const text = `¡Únete a mi partida de dominó! Código de sala: ${state.game.code}. Entra aquí: ${finalShareUrl}`;
             const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
             window.open(url, '_blank');
         });
@@ -1235,7 +1241,24 @@ function init() {
             saveGame();
         }
     } else {
-        showScreen('screen-login');
+        showScreen('screen-setup');
+    }
+
+    // Auto-unirse si viene el código en la URL (?code=XXXX)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get('code');
+    if (roomCode) {
+        const cleanCode = roomCode.trim().toUpperCase();
+        if (cleanCode && cleanCode.length === 4) {
+            const joinCodeInput = $('join-code');
+            if (joinCodeInput) {
+                joinCodeInput.value = cleanCode;
+                setTimeout(() => {
+                    const btnJoin = $('btn-join');
+                    if (btnJoin) btnJoin.click();
+                }, 500);
+            }
+        }
     }
 }
 
@@ -1266,42 +1289,53 @@ function initLoginScreen() {
     const errorMsg = $('login-error');
 
     function showError(msg) {
-        errorMsg.textContent = msg;
-        errorMsg.classList.remove('hidden');
-        setTimeout(() => errorMsg.classList.add('hidden'), 4000);
+        if (errorMsg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.remove('hidden');
+            setTimeout(() => errorMsg.classList.add('hidden'), 4000);
+        }
     }
 
-    $('btn-login').addEventListener('click', async () => {
-        try {
-            if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
-            await doLogin(emailInput.value, pwdInput.value);
-            showScreen('screen-setup');
-        } catch (e) {
-            console.error("Login Error:", e);
-            showError(e.message || 'Credenciales incorrectas');
-        }
-    });
+    const btnLogin = $('btn-login');
+    if (btnLogin) {
+        btnLogin.addEventListener('click', async () => {
+            try {
+                if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
+                await doLogin(emailInput.value, pwdInput.value);
+                showScreen('screen-setup');
+            } catch (e) {
+                console.error("Login Error:", e);
+                showError(e.message || 'Credenciales incorrectas');
+            }
+        });
+    }
 
-    $('btn-register').addEventListener('click', async () => {
-        try {
-            if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
-            await doRegister(emailInput.value, pwdInput.value);
-            showScreen('screen-setup');
-        } catch (e) {
-            console.error("Register Error:", e);
-            showError(e.message || 'Error al crear cuenta.');
-        }
-    });
+    const btnRegister = $('btn-register');
+    if (btnRegister) {
+        btnRegister.addEventListener('click', async () => {
+            try {
+                if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
+                await doRegister(emailInput.value, pwdInput.value);
+                showScreen('screen-setup');
+            } catch (e) {
+                console.error("Register Error:", e);
+                showError(e.message || 'Error al crear cuenta.');
+            }
+        });
+    }
 
-    $('btn-guest').addEventListener('click', async () => {
-        try {
-            await doGuestLogin();
-            showScreen('screen-setup');
-        } catch (e) {
-            console.error(e);
-            showError('Error: ' + (e.message || 'Error al entrar como invitado'));
-        }
-    });
+    const btnGuest = $('btn-guest');
+    if (btnGuest) {
+        btnGuest.addEventListener('click', async () => {
+            try {
+                await doGuestLogin();
+                showScreen('screen-setup');
+            } catch (e) {
+                console.error(e);
+                showError('Error: ' + (e.message || 'Error al entrar como invitado'));
+            }
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -34,41 +34,7 @@
         </div>
     </div>
 
-    <!-- ───────────────────────────── LOGIN SCREEN ───────────────────────────── -->
-    <div id="screen-login" class="screen active">
-        <div class="setup-bg-dots"></div>
-        <div class="setup-container" style="justify-content: center;">
-            <header class="setup-header">
-                <div class="logo-mark" style="margin-bottom: 20px;">
-                    <img src="logodomino.png" alt="Logo" style="height: 100px; width: auto; object-fit: contain;" />
-                </div>
-                <h1 class="logo-title" style="font-size: 3rem;">DominóScore</h1>
-                <p class="logo-sub">Tu marcador premium</p>
-            </header>
 
-            <div class="setup-card" style="width: 100%; max-width: 320px; margin: 0 auto;">
-                <div class="setup-section">
-                    <label class="field-label">Correo Electrónico</label>
-                    <input type="email" id="login-email" class="field-input" placeholder="tu@correo.com" />
-                </div>
-                <div class="setup-section">
-                    <label class="field-label">Contraseña</label>
-                    <input type="password" id="login-password" class="field-input" placeholder="••••••••" />
-                </div>
-                <div id="login-error" class="hidden" style="color: var(--danger); font-size: 0.85rem; margin-top: -10px; margin-bottom: 10px; text-align: center;"></div>
-                <button id="btn-login" class="btn-primary" style="width: 100%; margin-bottom: 15px; padding: 16px; font-size: 1.15rem; border-radius: 12px; font-weight: bold;">Iniciar Sesión</button>
-                <button id="btn-register" class="btn-hand edit" style="width: 100%; margin-bottom: 25px; padding: 16px; font-size: 1.15rem; border-radius: 12px; font-weight: bold;">Crear Cuenta</button>
-
-                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
-                    <hr style="flex: 1; border-color: var(--glass-border);">
-                    <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.9rem;">O</span>
-                    <hr style="flex: 1; border-color: var(--glass-border);">
-                </div>
-
-                <button id="btn-guest" class="btn-hand team2" style="width: 100%; padding: 16px; font-size: 1.15rem; border-radius: 12px; font-weight: bold;">Jugar como Invitado</button>
-            </div>
-        </div>
-    </div>
 
     <!-- ───────────────────────────── SETUP SCREEN ───────────────────────────── -->
     <div id="screen-setup" class="screen hidden">
@@ -172,12 +138,7 @@
                     </svg>
                     Importar
                 </button>
-                <button id="btn-logout" class="btn-ghost danger" style="border-color: rgba(255,100,100,0.3);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
-                    </svg>
-                    Cerrar Sesión
-                </button>
+
                 <button id="btn-sound-toggle" class="btn-ghost" title="Sonido">
                     <svg id="icon-sound-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
