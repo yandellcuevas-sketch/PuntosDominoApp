@@ -723,7 +723,10 @@ function openEditModal(handId) {
     if (!hand) return;
 
     $('edit-hand-id').value = handId;
-    $('edit-pts').value = hand.points;
+    
+    // Mostramos los puntos base (restando el valor de capicúa si la tenía)
+    const basePts = hand.points - (hand.capi ? (state.game.capiValue || 0) : 0);
+    $('edit-pts').value = basePts;
     $('edit-capi').checked = hand.capi;
 
     editSelectedTeam = hand.team;
@@ -764,8 +767,11 @@ function saveEditHand() {
     const hand = state.game.hands.find(h => h.id === handId);
     if (!hand) return;
 
+    // Calculamos el puntaje total sumando el valor de capicúa si está activo
+    const finalPts = pts + (capi ? (state.game.capiValue || 0) : 0);
+
     hand.team = editSelectedTeam;
-    hand.points = pts;
+    hand.points = finalPts;
     hand.capi = capi;
 
     // Recalc everything from scratch
