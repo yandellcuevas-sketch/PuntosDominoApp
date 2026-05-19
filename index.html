@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>DominóScore — Marcador Premium</title>
+    <link rel="stylesheet" href="style.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- ───────────────────────────── SPLASH SCREEN ───────────────────────────── -->
+    <div id="splash-screen">
+        <div class="splash-bg-glow"></div>
+        <div class="splash-content">
+            <div class="splash-logo-wrap">
+                <img src="logodomino.png" alt="DominóScore" class="splash-logo" />
+                <div class="splash-logo-ring"></div>
+            </div>
+            <h1 class="splash-title">DominóScore</h1>
+            <p class="splash-sub">Tu marcador premium</p>
+            <div class="splash-loader">
+                <div class="splash-bar">
+                    <div class="splash-bar-fill"></div>
+                </div>
+                <span class="splash-dots">Cargando<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- ───────────────────────────── SETUP SCREEN ───────────────────────────── -->
+    <div id="screen-setup" class="screen hidden">
+        <div class="setup-bg-dots"></div>
+        <div class="setup-container" style="position: relative;">
+            <header class="setup-header">
+                <button id="btn-profile-trigger" class="profile-trigger" title="Editar Perfil">
+                    <span id="profile-avatar-emoji">👤</span>
+                </button>
+                <div class="logo-mark" style="margin-bottom: 10px;">
+                    <img src="logodomino.png" alt="Logo" style="height: 60px; width: auto; object-fit: contain;" />
+                </div>
+                <h1 class="logo-title">DominóScore</h1>
+                <p class="logo-sub">Marcador Premium</p>
+            </header>
+
+            <div class="setup-card">
+                <div class="setup-section">
+                    <label class="field-label">Nombre de la partida</label>
+                    <input type="text" id="game-name" class="field-input" placeholder="Ej: Torneo del Viernes"
+                        maxlength="40" />
+                </div>
+
+                <div class="teams-grid">
+                    <!-- Equipo 1 -->
+                    <div class="team-setup-card team1-card">
+                        <div class="team-badge t1">E1</div>
+                        <h3 class="team-setup-title">Equipo 1</h3>
+                        <input type="text" id="t1p1" class="field-input" placeholder="Jugador 1" maxlength="20" />
+                        <input type="text" id="t1p2" class="field-input" placeholder="Jugador 2" maxlength="20" />
+                    </div>
+                    <!-- Equipo 2 -->
+                    <div class="team-setup-card team2-card">
+                        <div class="team-badge t2">E2</div>
+                        <h3 class="team-setup-title">Equipo 2</h3>
+                        <input type="text" id="t2p1" class="field-input" placeholder="Jugador 1" maxlength="20" />
+                        <input type="text" id="t2p2" class="field-input" placeholder="Jugador 2" maxlength="20" />
+                    </div>
+                </div>
+
+                <div class="config-row">
+                    <div class="config-group">
+                        <label class="field-label">Límite de puntos</label>
+                        <div class="chip-group" id="limit-chips">
+                            <button class="chip active" data-val="100">100</button>
+                            <button class="chip" data-val="150">150</button>
+                            <button class="chip" data-val="200">200</button>
+                            <button class="chip" data-val="50">50</button>
+                            <button class="chip" data-val="custom">Custom</button>
+                        </div>
+                        <input type="number" id="limit-custom" class="field-input hidden" placeholder="Puntos límite"
+                            min="1" inputmode="numeric" />
+                    </div>
+
+                    <div class="config-group">
+                        <label class="field-label">Valor capicúa</label>
+                        <div class="chip-group" id="capi-chips">
+                            <button class="chip active" data-val="25">25</button>
+                            <button class="chip" data-val="30">30</button>
+                            <button class="chip" data-val="custom">Custom</button>
+                        </div>
+                        <input type="number" id="capi-custom" class="field-input hidden" placeholder="Valor capicúa"
+                            min="1" inputmode="numeric" />
+                    </div>
+                </div>
+
+                <div id="setup-error" class="error-msg hidden"></div>
+
+                <button id="btn-start" class="btn-primary btn-full">
+                    <span>Iniciar Partida</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Card para Unirse a Partida -->
+            <div class="setup-card">
+                <div class="setup-section">
+                    <label class="field-label">Unirse a una partida (Invitado)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="join-code" class="field-input" placeholder="Código de sala (Ej: A7B9)" maxlength="6" style="text-transform: uppercase;" />
+                        <button id="btn-join" class="btn-secondary">Ver Partida</button>
+                    </div>
+                </div>
+                <div id="join-error" class="error-msg hidden"></div>
+            </div>
+
+            <!-- Botones globales -->
+            <div class="setup-footer-actions">
+                <button id="btn-view-history" class="btn-ghost">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v4H3zM3 11h18v2H3zM3 17h12v4H3z" />
+                    </svg>
+                    Historial
+                </button>
+                <button id="btn-import" class="btn-ghost">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                    </svg>
+                    Importar
+                </button>
+
+                <button id="btn-sound-toggle" class="btn-ghost" title="Sonido">
+                    <svg id="icon-sound-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" />
+                    </svg>
+                    <svg id="icon-sound-off" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" class="hidden">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <line x1="23" y1="9" x2="17" y2="15" />
+                        <line x1="17" y1="9" x2="23" y2="15" />
+                    </svg>
+                    Sonido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── GAME SCREEN ───────────────────────────── -->
+    <div id="screen-game" class="screen hidden">
+        <div class="game-topbar">
+            <div class="game-topbar-left">
+                <button id="btn-back-to-setup" class="btn-icon" title="Nueva partida">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <div>
+                    <span id="game-title-bar" class="game-title-bar">Partida</span>
+                    <span id="game-status-badge" class="status-badge active">Activa</span>
+                    <span id="game-code-badge" class="status-badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-sub); margin-left: 4px; display: inline-flex; align-items: center; gap: 6px;">Código: <span id="lbl-game-code" style="color: var(--neon); font-weight: 700;">----</span>
+                        <button id="btn-share-whatsapp" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px; display: flex; align-items: center;" title="Compartir por WhatsApp">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                            </svg>
+                        </button>
+                    </span>
+                </div>
+            </div>
+            <div class="game-topbar-right">
+                <span id="game-datetime" class="game-datetime"></span>
+                <button id="btn-sound-game" class="btn-icon" title="Sonido">
+                    <svg id="icon-sound-on-g" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <path d="M19.07 4.93a10 10 0 010 14.14" />
+                    </svg>
+                    <svg id="icon-sound-off-g" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" class="hidden">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                        <line x1="23" y1="9" x2="17" y2="15" />
+                        <line x1="17" y1="9" x2="23" y2="15" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scoreboard -->
+        <div class="scoreboard">
+            <!-- Team 1 -->
+            <div class="score-card" id="score-card-1">
+                <div class="score-card-header">
+                    <div class="team-badge t1">E1</div>
+                    <div class="team-names-block">
+                        <span id="sb-t1p1" class="team-player-name"></span>
+                        <span class="team-amp">&amp;</span>
+                        <span id="sb-t1p2" class="team-player-name"></span>
+                    </div>
+                </div>
+                <div class="score-number" id="score-t1">0</div>
+                <div class="progress-track">
+                    <div class="progress-fill t1-fill" id="progress-t1" style="width:0%"></div>
+                </div>
+                <div class="progress-label"><span id="progress-t1-pct">0%</span> del límite</div>
+            </div>
+
+            <!-- VS -->
+            <div class="vs-divider">
+                <span class="vs-text">VS</span>
+                <div id="leading-badge" class="leading-badge hidden"></div>
+            </div>
+
+            <!-- Team 2 -->
+            <div class="score-card" id="score-card-2">
+                <div class="score-card-header">
+                    <div class="team-badge t2">E2</div>
+                    <div class="team-names-block">
+                        <span id="sb-t2p1" class="team-player-name"></span>
+                        <span class="team-amp">&amp;</span>
+                        <span id="sb-t2p2" class="team-player-name"></span>
+                    </div>
+                </div>
+                <div class="score-number" id="score-t2">0</div>
+                <div class="progress-track">
+                    <div class="progress-fill t2-fill" id="progress-t2" style="width:0%"></div>
+                </div>
+                <div class="progress-label"><span id="progress-t2-pct">0%</span> del límite</div>
+            </div>
+        </div>
+
+        <!-- Input Panel -->
+        <div class="input-panel" id="input-panel">
+            <div class="team-selector">
+                <button class="team-sel-btn" id="sel-t1" data-team="1">
+                    <span id="sel-t1-label">Equipo 1</span>
+                </button>
+                <button class="team-sel-btn" id="sel-t2" data-team="2">
+                    <span id="sel-t2-label">Equipo 2</span>
+                </button>
+            </div>
+
+            <div class="quick-section-header">
+                <span class="quick-section-icon">⚡</span>
+                <span class="quick-section-title">Acciones Rápidas</span>
+            </div>
+
+            <div class="quick-btns-single">
+                <button class="qbtn qbtn-featured" data-pts="30">+30</button>
+            </div>
+
+            <div class="manual-row">
+                <input type="number" id="manual-pts" class="field-input manual-pts-wide"
+                    placeholder="Puntos de la mano…" min="0" inputmode="numeric" />
+                <label class="capi-toggle">
+                    <input type="checkbox" id="chk-capi" />
+                    <span class="capi-toggle-track">
+                        <span class="capi-toggle-thumb"></span>
+                    </span>
+                    <span class="capi-toggle-label">Capicúa</span>
+                </label>
+                <button id="btn-register-pts" class="btn-primary">Registrar</button>
+            </div>
+
+            <div id="game-error" class="error-msg hidden"></div>
+
+            <div class="action-row">
+                <button id="btn-undo" class="btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <path d="M3 10h10a5 5 0 010 10H7" />
+                        <polyline points="3 6 3 10 7 10" />
+                    </svg>
+                    Deshacer
+                </button>
+                <button id="btn-reset" class="btn-secondary btn-danger-outline">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="1 4 1 10 7 10" />
+                        <path d="M3.51 15a9 9 0 102.13-9.36L1 10" />
+                    </svg>
+                    Reiniciar
+                </button>
+                <button id="btn-open-history" class="btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v4H3zM3 11h18v2H3z" />
+                    </svg>
+                    Historial
+                </button>
+            </div>
+        </div>
+
+        <!-- Hand history -->
+        <div class="hands-section">
+            <h3 class="section-title">Manos jugadas</h3>
+            <div id="hands-list" class="hands-list">
+                <p class="empty-state">Aún no hay manos registradas.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── HISTORY SCREEN ───────────────────────────── -->
+    <div id="screen-history" class="screen hidden">
+        <div class="game-topbar">
+            <div class="game-topbar-left">
+                <button id="btn-back-from-history" class="btn-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <span class="game-title-bar">Historial de Partidas</span>
+            </div>
+            <div class="game-topbar-right">
+                <button id="btn-export" class="btn-ghost small">Exportar</button>
+                <button id="btn-clear-history" class="btn-ghost small danger">Borrar</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="stat-val" id="stat-total">0</div>
+                <div class="stat-lbl">Partidas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val" id="stat-capis">0</div>
+                <div class="stat-lbl">Capicúas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val" id="stat-lisas">0</div>
+                <div class="stat-lbl">Lisas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-val" id="stat-mvp">—</div>
+                <div class="stat-lbl">MVP</div>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="search-bar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="history-search" class="search-input" placeholder="Buscar por nombre de jugador…" />
+        </div>
+
+        <div class="filter-row">
+            <button class="chip active" data-filter="all">Todas</button>
+            <button class="chip" data-filter="newest">Recientes</button>
+            <button class="chip" data-filter="oldest">Antiguas</button>
+            <button class="chip" data-filter="won">Ganadas</button>
+            <button class="chip" data-filter="lost">Perdidas</button>
+        </div>
+
+        <div id="history-list" class="history-list">
+            <p class="empty-state">Sin partidas guardadas aún.</p>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── WINNER MODAL ───────────────────────────── -->
+    <div id="modal-winner" class="modal-overlay hidden">
+        <div class="modal-card winner-modal">
+            <div class="confetti-container" id="confetti-container"></div>
+            <div class="winner-icon">🏆</div>
+            <h2 class="winner-title">¡Partida terminada!</h2>
+            <p class="winner-team" id="modal-winner-team"></p>
+            <p id="modal-lisa-msg" class="lisa-msg hidden">🔥 ¡Lisaaa! El otro equipo quedó en 0.</p>
+            <div class="final-score-row">
+                <div class="final-score-block t1">
+                    <div class="fs-label" id="fs-t1-label"></div>
+                    <div class="fs-val" id="fs-t1-val"></div>
+                </div>
+                <div class="fs-sep">—</div>
+                <div class="final-score-block t2">
+                    <div class="fs-label" id="fs-t2-label"></div>
+                    <div class="fs-val" id="fs-t2-val"></div>
+                </div>
+            </div>
+            <p class="winner-datetime" id="modal-end-time"></p>
+            <button id="btn-new-game" class="btn-primary btn-full">Nueva Partida</button>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── EDIT HAND MODAL ───────────────────────────── -->
+    <div id="modal-edit" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3 class="modal-title">Editar mano</h3>
+            <input type="hidden" id="edit-hand-id" />
+            <label class="field-label">Equipo ganador</label>
+            <div class="team-selector" style="margin-bottom:12px;">
+                <button class="team-sel-btn" id="edit-sel-t1" data-team="1">Equipo 1</button>
+                <button class="team-sel-btn" id="edit-sel-t2" data-team="2">Equipo 2</button>
+            </div>
+            <label class="field-label">Puntos</label>
+            <input type="number" id="edit-pts" class="field-input" min="0" inputmode="numeric" />
+            <label class="capi-check" style="margin:12px 0;">
+                <input type="checkbox" id="edit-capi" />
+                <span class="capi-label">Capicúa</span>
+            </label>
+            <div id="edit-error" class="error-msg hidden"></div>
+            <div class="modal-actions">
+                <button id="btn-edit-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-edit-save" class="btn-primary">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── CONFIRM MODAL ───────────────────────────── -->
+    <div id="modal-confirm" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3 class="modal-title" id="confirm-title">¿Confirmar acción?</h3>
+            <p class="confirm-msg" id="confirm-msg"></p>
+            <div class="modal-actions">
+                <button id="btn-confirm-no" class="btn-secondary">Cancelar</button>
+                <button id="btn-confirm-yes" class="btn-primary btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── PROFILE MODAL ───────────────────────────── -->
+    <div id="modal-profile" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3 class="modal-title">Mi Perfil Premium</h3>
+            
+            <label class="field-label">Nombre / Apodo</label>
+            <input type="text" id="profile-username" class="field-input" placeholder="Ej: El Rey del Dominó" maxlength="20" />
+            
+            <label class="field-label" style="margin-top: 15px;">Selecciona tu Avatar</label>
+            <div class="avatar-selector-grid">
+                <div class="avatar-option selected" data-emoji="👤">👤</div>
+                <div class="avatar-option" data-emoji="👑">👑</div>
+                <div class="avatar-option" data-emoji="🎲">🎲</div>
+                <div class="avatar-option" data-emoji="🥷">🥷</div>
+                <div class="avatar-option" data-emoji="🦊">🦊</div>
+                <div class="avatar-option" data-emoji="🦁">🦁</div>
+                <div class="avatar-option" data-emoji="👾">👾</div>
+                <div class="avatar-option" data-emoji="🦄">🦄</div>
+            </div>
+            
+            <div id="profile-error" class="error-msg hidden" style="margin-top: 10px;"></div>
+            
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button id="btn-profile-cancel" class="btn-secondary">Cancelar</button>
+                <button id="btn-profile-save" class="btn-primary">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────── LISAA TOAST ───────────────────────────── -->
+    <div id="lisa-toast" class="lisa-toast hidden">
+        <span class="lisa-fire">🔥</span>
+        <span class="lisa-text">¡Lisaaa!</span>
+        <span class="lisa-fire">🔥</span>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="import-file" accept=".json" class="hidden" />
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Supabase custom logic -->
+    <script src="supabase.js"></script>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
