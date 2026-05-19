@@ -406,9 +406,12 @@
             </div>
             <label class="field-label">Puntos</label>
             <input type="number" id="edit-pts" class="field-input" min="0" inputmode="numeric" />
-            <label class="capi-check" style="margin:12px 0;">
+            <label class="capi-toggle" style="margin: 12px 0; justify-content: flex-start; gap: 9px;">
                 <input type="checkbox" id="edit-capi" />
-                <span class="capi-label">Capicúa</span>
+                <span class="capi-toggle-track">
+                    <span class="capi-toggle-thumb"></span>
+                </span>
+                <span class="capi-toggle-label">Capicúa</span>
             </label>
             <div id="edit-error" class="error-msg hidden"></div>
             <div class="modal-actions">
