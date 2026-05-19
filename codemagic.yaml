@@ -57,7 +57,7 @@ workflows:
       node: latest
       java: 17
       android_signing:
-        - dominoscore
+        - domino
     scripts:
       - name: Install npm dependencies
         script: npm install
