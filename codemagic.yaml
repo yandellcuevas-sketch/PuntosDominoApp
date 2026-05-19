@@ -55,7 +55,7 @@ workflows:
     max_build_duration: 60
     environment:
       node: latest
-      java: 17
+      java: 21
       android_signing:
         - domino
     scripts:
