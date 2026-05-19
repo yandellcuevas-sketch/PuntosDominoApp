@@ -6,6 +6,7 @@
   "scripts": {
     "start": "npx serve www",
     "sync": "npx cap sync",
+    "deploy": "gh-pages -d www",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.3.4"
+    "@capacitor/cli": "^8.3.4",
+    "gh-pages": "^6.3.0"
   }
 }
