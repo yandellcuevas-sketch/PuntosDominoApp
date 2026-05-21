@@ -472,10 +472,13 @@
     <!-- Hidden file input for import -->
     <input type="file" id="import-file" accept=".json" class="hidden" />
 
-    <!-- Supabase SDK -->
+    <!-- Persistencia local (siempre disponible, sin red) -->
+    <script src="local.js"></script>
+
+    <!-- Supabase SDK (solo para modo espectador, opcional) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Supabase custom logic -->
+
+    <!-- Módulo espectador (opcional, nunca bloquea el juego) -->
     <script src="supabase.js"></script>
 
     <script src="app.js"></script>

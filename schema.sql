@@ -1,5 +1,58 @@
--- 1. Crear tabla 'games' para guardar las partidas activas e historiales
-CREATE TABLE public.games (
+-- ═══════════════════════════════════════════════════════════════════
+--  schema.sql — DominóScore
+--  Arquitectura Local-First: Supabase solo para modo espectador
+-- ═══════════════════════════════════════════════════════════════════
+-- NOTA: Las tablas 'games' y 'profiles' se mantienen por compatibilidad
+-- pero ya NO son parte del flujo principal de la app.
+-- La app guarda todo localmente. Supabase solo se usa para spectator_rooms.
+
+-- ─── TABLA PRINCIPAL: spectator_rooms (nueva) ───────────────────────
+-- Solo contiene datos mínimos públicos del marcador.
+-- No contiene datos personales, emails, passwords ni identificadores privados.
+
+CREATE TABLE IF NOT EXISTS public.spectator_rooms (
+    room_code    text PRIMARY KEY,
+    user_id      uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+    team_a_name  text NOT NULL DEFAULT '',
+    team_b_name  text NOT NULL DEFAULT '',
+    team_a_score integer NOT NULL DEFAULT 0,
+    team_b_score integer NOT NULL DEFAULT 0,
+    target_score integer NOT NULL DEFAULT 100,
+    current_round integer NOT NULL DEFAULT 0,
+    game_status  text NOT NULL DEFAULT 'active',
+    updated_at   timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS para spectator_rooms
+ALTER TABLE public.spectator_rooms ENABLE ROW LEVEL SECURITY;
+
+-- Cualquiera puede VER una sala de espectador (datos públicos del marcador)
+CREATE POLICY "Espectadores pueden ver cualquier sala"
+    ON public.spectator_rooms FOR SELECT
+    USING (true);
+
+-- Solo el creador de la sesión puede PUBLICAR/ACTUALIZAR su sala
+CREATE POLICY "Usuario puede publicar su propia sala"
+    ON public.spectator_rooms FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Usuario puede actualizar su propia sala"
+    ON public.spectator_rooms FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Usuario puede eliminar su propia sala"
+    ON public.spectator_rooms FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Habilitar Realtime para spectator_rooms (espectadores en vivo)
+ALTER PUBLICATION supabase_realtime ADD TABLE public.spectator_rooms;
+
+
+-- ─── TABLAS LEGACY (mantenidas por compatibilidad, no usadas por la app) ─
+-- La app ya no escribe en estas tablas.
+-- Se dejan para no romper datos históricos.
+
+CREATE TABLE IF NOT EXISTS public.games (
     id text PRIMARY KEY,
     user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
     code text,
@@ -7,8 +60,7 @@ CREATE TABLE public.games (
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Crear tabla 'profiles' para guardar el perfil y estadísticas generales del usuario
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
     id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     username text,
     avatar text,
@@ -16,28 +68,14 @@ CREATE TABLE public.profiles (
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. Configurar Row Level Security (RLS) para que cada usuario solo vea sus datos
 ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Políticas para 'games'
--- PERMITE A LOS ESPECTADORES VER LA PARTIDA
-CREATE POLICY "Cualquiera puede ver las partidas" 
-    ON public.games FOR SELECT 
-    USING (true);
-
-CREATE POLICY "Los usuarios pueden insertar/actualizar sus propias partidas" 
-    ON public.games FOR ALL 
-    USING (auth.uid() = user_id);
-
--- Políticas para 'profiles'
-CREATE POLICY "Los usuarios pueden ver su propio perfil" 
-    ON public.profiles FOR SELECT 
-    USING (auth.uid() = id);
-
-CREATE POLICY "Los usuarios pueden actualizar su propio perfil" 
-    ON public.profiles FOR ALL 
-    USING (auth.uid() = id);
-
--- 4. Habilitar el modo tiempo real (Realtime) para la tabla games (útil para el modo espectador)
-alter publication supabase_realtime add table public.games;
+CREATE POLICY "Cualquiera puede ver las partidas"
+    ON public.games FOR SELECT USING (true);
+CREATE POLICY "Los usuarios pueden insertar/actualizar sus propias partidas"
+    ON public.games FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Los usuarios pueden ver su propio perfil"
+    ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Los usuarios pueden actualizar su propio perfil"
+    ON public.profiles FOR ALL USING (auth.uid() = id);

@@ -1667,3 +1667,17 @@ body {
     border-color: var(--neon);
     box-shadow: 0 0 10px rgba(42, 240, 255, 0.2);
 }
+
+/* ── Modo Espectador: mensaje de estado ───────── */
+.join-status-msg {
+    display: none;
+    font-size: 0.82rem;
+    color: var(--neon);
+    background: rgba(42, 240, 255, 0.06);
+    border: 1px solid rgba(42, 240, 255, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    text-align: center;
+    animation: pulse-glow 2s ease-in-out infinite;
+}

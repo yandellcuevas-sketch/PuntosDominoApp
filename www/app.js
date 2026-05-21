@@ -101,34 +101,54 @@ function showScreen(id) {
 }
 
 // ─── Persistencia ─────────────────────────────────────────────────
+// ARQUITECTURA LOCAL-FIRST:
+// 1. Siempre guarda/carga localmente primero (local.js — nunca falla).
+// 2. Si el modo espectador está activo, publica en Supabase como fire-and-forget.
+//    Nunca bloquea, nunca muestra errores técnicos al usuario.
+
 function saveGame() {
     if (state.game) {
-        localStorage.setItem(LS_GAME, JSON.stringify(state.game));
-        if (typeof fb_saveGame === 'function') fb_saveGame(state.game);
+        // Paso 1: guardar localmente (siempre, nunca falla)
+        localSaveGame(state.game);
+        // Paso 2: publicar para espectadores si hay sala activa (fire-and-forget)
+        if (!state.isSpectator && typeof spectatorPublishState === 'function') {
+            const minimal = _gameToSpectatorMinimal(state.game);
+            if (minimal) spectatorPublishState(minimal); // async, ignoramos el resultado
+        }
     } else {
-        localStorage.removeItem(LS_GAME);
-        if (typeof fb_saveGame === 'function') fb_saveGame(null);
+        localClearGame();
+        if (typeof spectatorCloseRoom === 'function') spectatorCloseRoom();
     }
 }
+
 function saveHistory() {
-    localStorage.setItem(LS_HISTORY, JSON.stringify(state.history));
-    if (typeof fb_saveHistory === 'function') fb_saveHistory(state.history);
+    // Solo local — historial nunca necesita red
+    localSaveHistory(state.history);
 }
+
 function loadStorage() {
-    try {
-        const g = localStorage.getItem(LS_GAME);
-        if (g) state.game = JSON.parse(g);
-    } catch (e) { state.game = null; }
-    try {
-        const h = localStorage.getItem(LS_HISTORY);
-        if (h) state.history = JSON.parse(h);
-    } catch (e) { state.history = []; }
-    const s = localStorage.getItem(LS_SOUND);
-    state.soundEnabled = s === null ? true : s === 'true';
-    try {
-        const p = localStorage.getItem(LS_PROFILE);
-        if (p) state.profile = JSON.parse(p);
-    } catch (e) { state.profile = { username: '', avatar: '👤' }; }
+    // Cargar partida activa
+    state.game = localLoadGame(); // retorna null si no hay
+    // Cargar historial
+    state.history = localLoadHistory(); // retorna [] si no hay
+    // Cargar configuración (sonido + perfil)
+    const settings = localLoadSettings();
+    state.soundEnabled = settings.soundEnabled;
+    state.profile = settings.profile;
+}
+
+/** Construye el objeto mínimo de la partida para el modo espectador. */
+function _gameToSpectatorMinimal(g) {
+    if (!g || !g.teams || g.teams.length < 2) return null;
+    return {
+        team_a_name  : (g.teams[0].players || []).join(' & '),
+        team_b_name  : (g.teams[1].players || []).join(' & '),
+        team_a_score : g.teams[0].score || 0,
+        team_b_score : g.teams[1].score || 0,
+        target_score : g.limit || 100,
+        current_round: (g.hands || []).length,
+        game_status  : g.status || 'active',
+    };
 }
 
 function generateShortCode() {
@@ -143,8 +163,9 @@ function generateShortCode() {
 // ─── Crear partida ────────────────────────────────────────────────
 function buildGame(cfg) {
     const gameCode = generateShortCode();
-    if (typeof fb_setRoomCode === 'function') fb_setRoomCode(gameCode);
-    state.isSpectator = false; // El creador no es espectador
+    // El código se genera localmente siempre.
+    // Si el espectador se activa después, se publicará el estado en ese momento.
+    state.isSpectator = false; // El creador nunca es espectador
     
     return {
         id: uid(),
@@ -338,26 +359,17 @@ function startGame() {
     if (v.limit < 1) return showSetupError('El límite debe ser mayor a 0.');
     if (v.capiValue < 1) return showSetupError('El valor de capicúa debe ser mayor a 0.');
 
+    // Crear partida 100% local
     state.game = buildGame(v);
-    saveGame();
-    
-    // Activar listener para la nueva sala
-    if (typeof fb_onGameChange === 'function') {
-        fb_onGameChange((gameData) => {
-            if (gameData) {
-                state.game = gameData;
-                if (typeof renderGameScreen === 'function') renderGameScreen();
-                if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
-            }
-        });
-    }
-    
+    saveGame(); // Guarda localmente primero; también publica a espectadores si hay sala
+
     try {
         if (typeof renderGameScreen === 'function') renderGameScreen();
         if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
         showScreen('screen-game');
     } catch (e) {
-        alert('Error al iniciar pantalla de juego: ' + e.message);
+        console.error('[app] Error al renderizar pantalla de juego:', e);
+        // No mostrar alert al usuario — la app continua
     }
     playTone(440, 'sine', 0.2, 0.15);
 }
@@ -1133,37 +1145,63 @@ function initEditModal() {
 function initJoinControls() {
     const btnJoin = $('btn-join');
     if (!btnJoin) return;
-    
-    btnJoin.addEventListener('click', () => {
+
+    btnJoin.addEventListener('click', async () => {
         const codeInput = $('join-code');
         const code = codeInput.value.trim().toUpperCase();
-        
+
         if (!code) {
-            showJoinError("Introduce un código de sala.");
+            showJoinError('Introduce un código de sala.');
             return;
         }
-        
-        showJoinError(""); // Limpiar error
-        
-        if (typeof fb_setRoomCode === 'function') {
-            fb_setRoomCode(code);
-        }
-        
-        state.isSpectator = true; // Entra como espectador
-        
-        // Activar listener para esa sala
-        if (typeof fb_onGameChange === 'function') {
-            fb_onGameChange((gameData) => {
-                state.game = gameData;
-                if (state.game) {
+
+        showJoinError('');
+        showJoinStatus('Buscando la sala…');
+
+        // Intentar suscripción al espectador (requiere Supabase + internet)
+        let subscribed = false;
+        try {
+            if (typeof spectatorSubscribeRoom === 'function') {
+                subscribed = await spectatorSubscribeRoom(code, (minimalState) => {
+                    if (!minimalState) {
+                        showJoinError('No se encontró la sala o no está disponible.');
+                        showJoinStatus('');
+                        state.isSpectator = false;
+                        return;
+                    }
+                    // Construir objeto de partida de solo lectura para mostrar el marcador
+                    state.isSpectator = true;
+                    state.game = {
+                        code         : code,
+                        name         : code,
+                        limit        : minimalState.target_score || 100,
+                        status       : minimalState.game_status  || 'active',
+                        teams        : [
+                            { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
+                            { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
+                        ],
+                        hands        : [],
+                        capiValue    : 25,
+                        startTime    : new Date().toISOString(),
+                        winner       : null,
+                        isLisa       : false,
+                        savedToHistory: false,
+                    };
+                    if ($('lbl-game-code')) $('lbl-game-code').textContent = code;
                     if (typeof renderGameScreen === 'function') renderGameScreen();
-                    if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
                     showScreen('screen-game');
                     applySpectatorMode();
-                } else {
-                    showJoinError("No se encontró la partida o fue borrada.");
-                }
-            });
+                    showJoinStatus('');
+                });
+            }
+        } catch (e) {
+            console.warn('[app] Error en modo espectador:', e.message);
+            subscribed = false;
+        }
+
+        if (!subscribed) {
+            showJoinStatus('');
+            showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
         }
     });
 }
@@ -1179,6 +1217,26 @@ function showJoinError(msg) {
     }
 }
 
+/** Muestra un mensaje de estado amigable debajo del campo de código. */
+function showJoinStatus(msg) {
+    let el = $('join-status');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'join-status';
+        el.className = 'join-status-msg';
+        const joinCard = $('join-error');
+        if (joinCard && joinCard.parentNode) {
+            joinCard.parentNode.insertBefore(el, joinCard);
+        }
+    }
+    if (msg) {
+        el.textContent = msg;
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
 function applySpectatorMode() {
     if (state.isSpectator) {
         const panel = document.querySelector('.input-panel');
@@ -1186,44 +1244,16 @@ function applySpectatorMode() {
             panel.style.display = 'none';
         }
         const btnBack = $('btn-back-to-setup');
-        if (btnBack) btnBack.title = "Salir de la sala";
+        if (btnBack) btnBack.title = 'Salir de la sala';
     }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────
 function init() {
+    // 1. Cargar todo desde localStorage — instantáneo, nunca falla
     loadStorage();
 
-    // Si hay una partida guardada localmente, usar su código de sala
-    if (state.game && state.game.code) {
-        if (typeof fb_setRoomCode === 'function') fb_setRoomCode(state.game.code);
-    }
-
-    // Listeners de Firebase para sincronización en tiempo real
-    if (typeof fb_onGameChange === 'function') {
-        fb_onGameChange((gameData) => {
-            state.game = gameData;
-            if (state.game) {
-                if (typeof renderGameScreen === 'function') renderGameScreen();
-                // Si el juego terminó y no se ha mostrado el modal
-                if (state.game.status === 'finished' && !state.game._modalShown) {
-                    if (typeof showWinnerModal === 'function') showWinnerModal();
-                    state.game._modalShown = true;
-                    saveGame(); // Actualiza localmente
-                }
-            } else {
-                showScreen('screen-setup');
-            }
-        });
-    }
-
-    if (typeof fb_onHistoryChange === 'function') {
-        fb_onHistoryChange((historyList) => {
-            state.history = historyList;
-            if (typeof renderHistory === 'function') renderHistory();
-        });
-    }
-
+    // 2. Inicializar controles de UI (no dependen de red)
     initLoginScreen();
     initJoinControls();
     initSetupScreen();
@@ -1235,12 +1265,12 @@ function init() {
     updateSoundIcons();
     updateProfileUI();
 
-    // Decide which screen to show
+    // 3. Mostrar pantalla correcta según estado local
     if (state.game) {
         if (typeof renderGameScreen === 'function') renderGameScreen();
         if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
         showScreen('screen-game');
-        // If game was finished, show winner modal again (without music)
+        // Si la partida terminó y no había mostrado el modal, mostrarlo (sin música)
         if (state.game.status === 'finished' && !state.game._modalShown) {
             showWinnerModal();
             state.game._modalShown = true;
@@ -1250,7 +1280,8 @@ function init() {
         showScreen('screen-setup');
     }
 
-    // Auto-unirse si viene el código en la URL (?code=XXXX)
+    // 4. Auto-unirse si viene el código en la URL (?code=XXXX)
+    //    Usa el modo espectador (Supabase opcional) con fallback visible
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get('code');
     if (roomCode) {
@@ -1259,6 +1290,7 @@ function init() {
             const joinCodeInput = $('join-code');
             if (joinCodeInput) {
                 joinCodeInput.value = cleanCode;
+                // Leve delay para que la UI esté lista
                 setTimeout(() => {
                     const btnJoin = $('btn-join');
                     if (btnJoin) btnJoin.click();
@@ -1268,80 +1300,22 @@ function init() {
     }
 }
 
+
 function initLoginScreen() {
-    window.onSessionRestored = async () => {
-        if (!state.game) showScreen('screen-setup');
-        
-        // Sync profile and history from Supabase
-        if (typeof fb_getProfile === 'function') {
-            const prof = await fb_getProfile();
-            if (prof) {
-                state.profile.username = prof.username || '';
-                state.profile.avatar = prof.avatar || '👤';
-                localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
-                updateProfileUI();
-                
-                if (prof.history) {
-                    state.history = prof.history;
-                    localStorage.setItem(LS_HISTORY, JSON.stringify(state.history));
-                    if (typeof renderHistory === 'function') renderHistory();
-                }
-            }
-        }
-    };
+    // La app ya no usa login/register/guest a través de Supabase.
+    // Toda la sesión es local. Esta función se mantiene como stub
+    // para que no rompa nada si hay referencias residuales en otros lugares.
+    window.onSessionRestored = null; // Eliminar el hook anterior de Supabase
 
-    const emailInput = $('login-email');
-    const pwdInput = $('login-password');
-    const errorMsg = $('login-error');
-
-    function showError(msg) {
-        if (errorMsg) {
-            errorMsg.textContent = msg;
-            errorMsg.classList.remove('hidden');
-            setTimeout(() => errorMsg.classList.add('hidden'), 4000);
-        }
-    }
-
-    const btnLogin = $('btn-login');
-    if (btnLogin) {
-        btnLogin.addEventListener('click', async () => {
-            try {
-                if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
-                await doLogin(emailInput.value, pwdInput.value);
-                showScreen('screen-setup');
-            } catch (e) {
-                console.error("Login Error:", e);
-                showError(e.message || 'Credenciales incorrectas');
-            }
-        });
-    }
-
+    // Los botones btn-login, btn-register, btn-guest no existen en el HTML actual.
+    // Si existieran por alguna versión futura, los dejamos como no-op seguros.
+    const btnLogin    = $('btn-login');
     const btnRegister = $('btn-register');
-    if (btnRegister) {
-        btnRegister.addEventListener('click', async () => {
-            try {
-                if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
-                await doRegister(emailInput.value, pwdInput.value);
-                showScreen('screen-setup');
-            } catch (e) {
-                console.error("Register Error:", e);
-                showError(e.message || 'Error al crear cuenta.');
-            }
-        });
-    }
+    const btnGuest    = $('btn-guest');
 
-    const btnGuest = $('btn-guest');
-    if (btnGuest) {
-        btnGuest.addEventListener('click', async () => {
-            try {
-                await doGuestLogin();
-                showScreen('screen-setup');
-            } catch (e) {
-                console.error(e);
-                showError('Error: ' + (e.message || 'Error al entrar como invitado'));
-            }
-        });
-    }
+    if (btnLogin)    btnLogin.addEventListener('click',    () => showScreen('screen-setup'));
+    if (btnRegister) btnRegister.addEventListener('click', () => showScreen('screen-setup'));
+    if (btnGuest)    btnGuest.addEventListener('click',    () => showScreen('screen-setup'));
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -1391,23 +1365,20 @@ function initProfileModal() {
         });
     });
     
-    $('btn-profile-save').addEventListener('click', async () => {
+    $('btn-profile-save').addEventListener('click', () => {
         const username = $('profile-username').value.trim();
         const selectedOpt = document.querySelector('.avatar-option.selected');
         const avatar = selectedOpt ? selectedOpt.dataset.emoji : '👤';
-        
+
         state.profile.username = username;
         state.profile.avatar = avatar;
-        
-        localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
+
+        // Guardar localmente primero (siempre funciona)
+        localSaveProfile(state.profile);
         updateProfileUI();
-        
+
         $('modal-profile').classList.add('hidden');
-        
-        // Save to Supabase
-        if (typeof fb_saveProfile === 'function') {
-            await fb_saveProfile(username, avatar);
-        }
+        // No llamamos a fb_saveProfile() — el perfil es 100% local
     });
 }
 
