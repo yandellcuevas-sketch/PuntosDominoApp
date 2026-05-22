@@ -98,37 +98,69 @@ function showScreen(id) {
         target.classList.remove('hidden');
         target.classList.add('active');
     }
+
+    // Adaptar visibilidad del botón de continuar si hay partida activa
+    if (id === 'screen-setup') {
+        const btnContinue = $('btn-continue');
+        if (btnContinue) {
+            if (state.game && state.game.status === 'active') {
+                btnContinue.classList.remove('hidden');
+            } else {
+                btnContinue.classList.add('hidden');
+            }
+        }
+    }
 }
 
 // ─── Persistencia ─────────────────────────────────────────────────
+// ARQUITECTURA LOCAL-FIRST:
+// 1. Siempre guarda/carga localmente primero (local.js — nunca falla).
+// 2. Si el modo espectador está activo, publica en Supabase como fire-and-forget.
+//    Nunca bloquea, nunca muestra errores técnicos al usuario.
+
 function saveGame() {
     if (state.game) {
-        localStorage.setItem(LS_GAME, JSON.stringify(state.game));
-        if (typeof fb_saveGame === 'function') fb_saveGame(state.game);
+        // Paso 1: guardar localmente (siempre, nunca falla)
+        localSaveGame(state.game);
+        // Paso 2: publicar para espectadores si hay sala activa (fire-and-forget)
+        if (!state.isSpectator && typeof spectatorPublishState === 'function') {
+            const minimal = _gameToSpectatorMinimal(state.game);
+            if (minimal) spectatorPublishState(minimal); // async, ignoramos el resultado
+        }
     } else {
-        localStorage.removeItem(LS_GAME);
-        if (typeof fb_saveGame === 'function') fb_saveGame(null);
+        localClearGame();
+        if (typeof spectatorCloseRoom === 'function') spectatorCloseRoom();
     }
 }
+
 function saveHistory() {
-    localStorage.setItem(LS_HISTORY, JSON.stringify(state.history));
-    if (typeof fb_saveHistory === 'function') fb_saveHistory(state.history);
+    // Solo local — historial nunca necesita red
+    localSaveHistory(state.history);
 }
+
 function loadStorage() {
-    try {
-        const g = localStorage.getItem(LS_GAME);
-        if (g) state.game = JSON.parse(g);
-    } catch (e) { state.game = null; }
-    try {
-        const h = localStorage.getItem(LS_HISTORY);
-        if (h) state.history = JSON.parse(h);
-    } catch (e) { state.history = []; }
-    const s = localStorage.getItem(LS_SOUND);
-    state.soundEnabled = s === null ? true : s === 'true';
-    try {
-        const p = localStorage.getItem(LS_PROFILE);
-        if (p) state.profile = JSON.parse(p);
-    } catch (e) { state.profile = { username: '', avatar: '👤' }; }
+    // Cargar partida activa
+    state.game = localLoadGame(); // retorna null si no hay
+    // Cargar historial
+    state.history = localLoadHistory(); // retorna [] si no hay
+    // Cargar configuración (sonido + perfil)
+    const settings = localLoadSettings();
+    state.soundEnabled = settings.soundEnabled;
+    state.profile = settings.profile;
+}
+
+/** Construye el objeto mínimo de la partida para el modo espectador. */
+function _gameToSpectatorMinimal(g) {
+    if (!g || !g.teams || g.teams.length < 2) return null;
+    return {
+        team_a_name  : (g.teams[0].players || []).join(' & '),
+        team_b_name  : (g.teams[1].players || []).join(' & '),
+        team_a_score : g.teams[0].score || 0,
+        team_b_score : g.teams[1].score || 0,
+        target_score : g.limit || 100,
+        current_round: (g.hands || []).length,
+        game_status  : g.status || 'active',
+    };
 }
 
 function generateShortCode() {
@@ -143,8 +175,9 @@ function generateShortCode() {
 // ─── Crear partida ────────────────────────────────────────────────
 function buildGame(cfg) {
     const gameCode = generateShortCode();
-    if (typeof fb_setRoomCode === 'function') fb_setRoomCode(gameCode);
-    state.isSpectator = false; // El creador no es espectador
+    // El código se genera localmente siempre.
+    // Si el espectador se activa después, se publicará el estado en ese momento.
+    state.isSpectator = false; // El creador nunca es espectador
     
     return {
         id: uid(),
@@ -223,10 +256,42 @@ function saveToHistory() {
         capicuas: g.hands.filter(h => h.capi).length,
         isLisa: g.isLisa,
     };
-    state.history.unshift(entry);
-    saveHistory();
+    
+    // Safety check to prevent duplicates if state desyncs
+    if (!state.history.some(h => h.id === g.id)) {
+        state.history.unshift(entry);
+        saveHistory();
+    }
+    
     state.game.savedToHistory = true;
     saveGame();
+    triggerAppReviewIfEligible();
+}
+
+// ─── Native App Review ────────────────────────────────────────────
+async function triggerAppReviewIfEligible() {
+    try {
+        if (typeof localIncrementMatchCount !== 'function') return;
+        
+        const reviewState = localIncrementMatchCount();
+        
+        // Solicitar review a partir de la 3ra partida y si no se ha solicitado
+        if (reviewState.matches >= 3 && !reviewState.requested) {
+            if (window.Capacitor && window.Capacitor.getPlatform() === 'ios') {
+                const { InAppReview } = window.Capacitor.Plugins;
+                if (InAppReview && typeof InAppReview.requestReview === 'function') {
+                    // Marcamos antes para evitar bucles si el plugin falla o cuelga
+                    if (typeof localMarkReviewRequested === 'function') {
+                        localMarkReviewRequested();
+                    }
+                    await InAppReview.requestReview();
+                    console.log('[app] Native iOS review prompt requested.');
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[app] Error triggering app review:', e.message);
+    }
 }
 
 // ─── UI: Setup ────────────────────────────────────────────────────
@@ -262,6 +327,17 @@ function initSetupScreen() {
     });
 
     $('btn-start').addEventListener('click', startGame);
+    
+    const btnContinue = $('btn-continue');
+    if (btnContinue) {
+        btnContinue.addEventListener('click', () => {
+            if (state.game && state.game.status === 'active') {
+                if (typeof renderGameScreen === 'function') renderGameScreen();
+                showScreen('screen-game');
+            }
+        });
+    }
+
     $('btn-view-history').addEventListener('click', () => {
         renderHistory();
         showScreen('screen-history');
@@ -330,36 +406,43 @@ function showSetupError(msg) {
 }
 
 function startGame() {
-    const v = getSetupValues();
-    if (!v.t1p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 1.');
-    if (!v.t1p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 1.');
-    if (!v.t2p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 2.');
-    if (!v.t2p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 2.');
-    if (v.limit < 1) return showSetupError('El límite debe ser mayor a 0.');
-    if (v.capiValue < 1) return showSetupError('El valor de capicúa debe ser mayor a 0.');
+    const startLogic = () => {
+        const v = getSetupValues();
+        if (!v.t1p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 1.');
+        if (!v.t1p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 1.');
+        if (!v.t2p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 2.');
+        if (!v.t2p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 2.');
+        if (v.limit < 1) return showSetupError('El límite debe ser mayor a 0.');
+        if (v.capiValue < 1) return showSetupError('El valor de capicúa debe ser mayor a 0.');
 
-    state.game = buildGame(v);
-    saveGame();
-    
-    // Activar listener para la nueva sala
-    if (typeof fb_onGameChange === 'function') {
-        fb_onGameChange((gameData) => {
-            if (gameData) {
-                state.game = gameData;
-                if (typeof renderGameScreen === 'function') renderGameScreen();
-                if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
+        // Crear partida 100% local
+        state.game = buildGame(v);
+        saveGame(); // Guarda localmente primero; también publica a espectadores si hay sala
+
+        try {
+            if (typeof renderGameScreen === 'function') renderGameScreen();
+            if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
+            showScreen('screen-game');
+        } catch (e) {
+            console.error('[app] Error al renderizar pantalla de juego:', e);
+            // No mostrar alert al usuario — la app continua
+        }
+        playTone(440, 'sine', 0.2, 0.15);
+    };
+
+    // Protección: no borrar partida activa sin intención explícita
+    if (state.game && state.game.status === 'active') {
+        confirmAction(
+            '¿Iniciar nueva partida?',
+            'Se perderá la partida activa actual.',
+            () => {
+                localClearGame();
+                startLogic();
             }
-        });
+        );
+    } else {
+        startLogic();
     }
-    
-    try {
-        if (typeof renderGameScreen === 'function') renderGameScreen();
-        if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
-        showScreen('screen-game');
-    } catch (e) {
-        alert('Error al iniciar pantalla de juego: ' + e.message);
-    }
-    playTone(440, 'sine', 0.2, 0.15);
 }
 
 // ─── UI: Game Screen ──────────────────────────────────────────────
@@ -564,7 +647,9 @@ function initGameControls() {
         showScreen('screen-history');
     });
     $('btn-back-to-setup').addEventListener('click', () => {
-        if (state.game && state.game.status === 'active') {
+        if (state.isSpectator) {
+            leaveSpectatorMode();
+        } else if (state.game && state.game.status === 'active') {
             confirmAction(
                 '¿Ir al inicio?',
                 'La partida activa se guardará y podrás continuar después.',
@@ -1133,39 +1218,182 @@ function initEditModal() {
 function initJoinControls() {
     const btnJoin = $('btn-join');
     if (!btnJoin) return;
-    
-    btnJoin.addEventListener('click', () => {
+
+    btnJoin.addEventListener('click', async () => {
         const codeInput = $('join-code');
         const code = codeInput.value.trim().toUpperCase();
-        
+
         if (!code) {
-            showJoinError("Introduce un código de sala.");
+            showJoinError('Introduce un código de sala.');
             return;
         }
-        
-        showJoinError(""); // Limpiar error
-        
-        if (typeof fb_setRoomCode === 'function') {
-            fb_setRoomCode(code);
-        }
-        
-        state.isSpectator = true; // Entra como espectador
-        
-        // Activar listener para esa sala
-        if (typeof fb_onGameChange === 'function') {
-            fb_onGameChange((gameData) => {
-                state.game = gameData;
-                if (state.game) {
-                    if (typeof renderGameScreen === 'function') renderGameScreen();
-                    if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
-                    showScreen('screen-game');
-                    applySpectatorMode();
+        joinSpectatorRoom(code);
+    });
+}
+
+// ─── Spectator Deep Linking & Join Flow ─────────────────────────
+async function joinSpectatorRoom(code) {
+    if (!code) return;
+
+    showScreen('screen-setup');
+    const btnJoin = $('btn-join-room');
+    if (btnJoin) btnJoin.scrollIntoView();
+
+    showJoinError('');
+    showJoinStatus('Buscando la sala…');
+
+    if (typeof spectatorCloseRoom === 'function') spectatorCloseRoom();
+
+    let subscribed = false;
+    try {
+        if (typeof spectatorSubscribeRoom === 'function') {
+            subscribed = await spectatorSubscribeRoom(code, (minimalState) => {
+                if (!minimalState) {
+                    showJoinError('No se encontró la sala o no está disponible.');
+                    showJoinStatus('');
+                    state.isSpectator = false;
+                    return;
+                }
+                
+                const isFinished = minimalState.game_status === 'finished';
+
+                state.isSpectator = true;
+                state.game = {
+                    code         : code,
+                    name         : code,
+                    limit        : minimalState.target_score || 100,
+                    status       : minimalState.game_status  || 'active',
+                    teams        : [
+                        { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
+                        { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
+                    ],
+                    hands        : [],
+                    capiValue    : 25,
+                    startTime    : new Date().toISOString(),
+                    winner       : isFinished ? 1 : null,
+                    isLisa       : false,
+                    savedToHistory: false,
+                };
+
+                if ($('lbl-game-code')) $('lbl-game-code').textContent = code;
+                if (typeof renderGameScreen === 'function') renderGameScreen();
+                showScreen('screen-game');
+                applySpectatorMode();
+                showJoinStatus('');
+
+                if (isFinished) {
+                    showFinishedSpectatorOverlay();
                 } else {
-                    showJoinError("No se encontró la partida o fue borrada.");
+                    hideFinishedSpectatorOverlay();
                 }
             });
         }
-    });
+    } catch (e) {
+        console.warn('[app] Error en modo espectador:', e.message);
+        subscribed = false;
+    }
+
+    if (!subscribed) {
+        showJoinStatus('');
+        showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
+    }
+}
+
+function showFinishedSpectatorOverlay() {
+    let overlay = document.getElementById('spectator-finished-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'spectator-finished-overlay';
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.85)';
+        overlay.style.zIndex = '50';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.innerHTML = `
+            <h2 style="color: var(--text-light); margin-bottom: 10px;">Partida Finalizada</h2>
+            <p style="color: var(--text-muted); text-align: center; max-width: 280px; margin-bottom: 20px;">Esta partida ha terminado y ya no recibirá más actualizaciones.</p>
+            <button class="btn-primary" onclick="leaveSpectatorMode()">Salir del Modo Espectador</button>
+        `;
+        const container = document.getElementById('screen-game');
+        if (container) {
+            container.appendChild(overlay);
+        } else {
+            document.body.appendChild(overlay);
+        }
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideFinishedSpectatorOverlay() {
+    const overlay = document.getElementById('spectator-finished-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+window.leaveSpectatorMode = function leaveSpectatorMode() {
+    if (typeof spectatorCloseRoom === 'function') spectatorCloseRoom();
+    
+    // Restore the local game safely
+    state.game = typeof localLoadGame === 'function' ? localLoadGame() : null;
+    state.isSpectator = false;
+    
+    hideFinishedSpectatorOverlay();
+    showScreen('screen-setup');
+};
+
+function initDeepLinks() {
+    // 1. Web Fallback Check
+    if (window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        if (code) {
+            // Check if running in a web browser context (not Capacitor Native)
+            if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+                // Show the web download screen
+                const screenDownload = document.getElementById('screen-download');
+                if (screenDownload) {
+                    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+                    screenDownload.classList.remove('hidden');
+                    screenDownload.classList.add('active');
+                }
+                
+                const appStoreUrl = 'https://apps.apple.com/us/app/dominoscorepro/id6770705123';
+                const customScheme = 'dominoscorepro://watch?code=' + code;
+
+                // Permitir que el DOM se dibuje (100ms) antes de intentar la navegación que pausa el hilo
+                setTimeout(() => {
+                    window.location.href = customScheme;
+                }, 100);
+
+                // Fallback: Si después de 2.5s la página sigue activa, ir a la App Store
+                setTimeout(() => {
+                    if (!document.hidden) {
+                        window.location.href = appStoreUrl;
+                    }
+                }, 2600);
+            } else {
+                // Cold start inside native app via query param
+                joinSpectatorRoom(code);
+            }
+        }
+    }
+
+    // 2. Native Deep Link Listener
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.addListener('appUrlOpen', data => {
+            if (data.url && data.url.includes('?code=')) {
+                const codeMatch = data.url.match(/code=([^&]+)/);
+                if (codeMatch && codeMatch[1]) {
+                    joinSpectatorRoom(codeMatch[1]);
+                }
+            }
+        });
+    }
 }
 
 function showJoinError(msg) {
@@ -1179,6 +1407,26 @@ function showJoinError(msg) {
     }
 }
 
+/** Muestra un mensaje de estado amigable debajo del campo de código. */
+function showJoinStatus(msg) {
+    let el = $('join-status');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'join-status';
+        el.className = 'join-status-msg';
+        const joinCard = $('join-error');
+        if (joinCard && joinCard.parentNode) {
+            joinCard.parentNode.insertBefore(el, joinCard);
+        }
+    }
+    if (msg) {
+        el.textContent = msg;
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
 function applySpectatorMode() {
     if (state.isSpectator) {
         const panel = document.querySelector('.input-panel');
@@ -1186,44 +1434,35 @@ function applySpectatorMode() {
             panel.style.display = 'none';
         }
         const btnBack = $('btn-back-to-setup');
-        if (btnBack) btnBack.title = "Salir de la sala";
+        if (btnBack) btnBack.title = 'Salir de la sala';
     }
+}
+
+// ─── Splash Screen ───────────────────────────
+function hideSplash(startTime) {
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, 2000 - elapsed); // 2000ms = tiempo de la animación CSS splashBarLoad
+    
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.classList.add('hide');
+            // Remove DOM element after transition completes (0.6s)
+            setTimeout(() => {
+                if (splash.parentNode) splash.remove();
+            }, 700);
+        }
+    }, remaining);
 }
 
 // ─── Init ─────────────────────────────────────────────────────────
 function init() {
+    const initStartTime = Date.now();
+
+    // 1. Cargar todo desde localStorage — instantáneo, nunca falla
     loadStorage();
 
-    // Si hay una partida guardada localmente, usar su código de sala
-    if (state.game && state.game.code) {
-        if (typeof fb_setRoomCode === 'function') fb_setRoomCode(state.game.code);
-    }
-
-    // Listeners de Firebase para sincronización en tiempo real
-    if (typeof fb_onGameChange === 'function') {
-        fb_onGameChange((gameData) => {
-            state.game = gameData;
-            if (state.game) {
-                if (typeof renderGameScreen === 'function') renderGameScreen();
-                // Si el juego terminó y no se ha mostrado el modal
-                if (state.game.status === 'finished' && !state.game._modalShown) {
-                    if (typeof showWinnerModal === 'function') showWinnerModal();
-                    state.game._modalShown = true;
-                    saveGame(); // Actualiza localmente
-                }
-            } else {
-                showScreen('screen-setup');
-            }
-        });
-    }
-
-    if (typeof fb_onHistoryChange === 'function') {
-        fb_onHistoryChange((historyList) => {
-            state.history = historyList;
-            if (typeof renderHistory === 'function') renderHistory();
-        });
-    }
-
+    // 2. Inicializar controles de UI (no dependen de red)
     initLoginScreen();
     initJoinControls();
     initSetupScreen();
@@ -1235,12 +1474,12 @@ function init() {
     updateSoundIcons();
     updateProfileUI();
 
-    // Decide which screen to show
+    // 3. Mostrar pantalla correcta según estado local
     if (state.game) {
         if (typeof renderGameScreen === 'function') renderGameScreen();
         if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
         showScreen('screen-game');
-        // If game was finished, show winner modal again (without music)
+        // Si la partida terminó y no había mostrado el modal, mostrarlo (sin música)
         if (state.game.status === 'finished' && !state.game._modalShown) {
             showWinnerModal();
             state.game._modalShown = true;
@@ -1250,98 +1489,29 @@ function init() {
         showScreen('screen-setup');
     }
 
-    // Auto-unirse si viene el código en la URL (?code=XXXX)
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('code');
-    if (roomCode) {
-        const cleanCode = roomCode.trim().toUpperCase();
-        if (cleanCode && cleanCode.length === 4) {
-            const joinCodeInput = $('join-code');
-            if (joinCodeInput) {
-                joinCodeInput.value = cleanCode;
-                setTimeout(() => {
-                    const btnJoin = $('btn-join');
-                    if (btnJoin) btnJoin.click();
-                }, 500);
-            }
-        }
-    }
+    // 4. Iniciar manejo de enlaces profundos y fallbacks web
+    initDeepLinks();
+
+    // 5. Ocultar el splash (mínimo 2 segundos después de iniciar)
+    hideSplash(initStartTime);
 }
 
+
 function initLoginScreen() {
-    window.onSessionRestored = async () => {
-        if (!state.game) showScreen('screen-setup');
-        
-        // Sync profile and history from Supabase
-        if (typeof fb_getProfile === 'function') {
-            const prof = await fb_getProfile();
-            if (prof) {
-                state.profile.username = prof.username || '';
-                state.profile.avatar = prof.avatar || '👤';
-                localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
-                updateProfileUI();
-                
-                if (prof.history) {
-                    state.history = prof.history;
-                    localStorage.setItem(LS_HISTORY, JSON.stringify(state.history));
-                    if (typeof renderHistory === 'function') renderHistory();
-                }
-            }
-        }
-    };
+    // La app ya no usa login/register/guest a través de Supabase.
+    // Toda la sesión es local. Esta función se mantiene como stub
+    // para que no rompa nada si hay referencias residuales en otros lugares.
+    window.onSessionRestored = null; // Eliminar el hook anterior de Supabase
 
-    const emailInput = $('login-email');
-    const pwdInput = $('login-password');
-    const errorMsg = $('login-error');
-
-    function showError(msg) {
-        if (errorMsg) {
-            errorMsg.textContent = msg;
-            errorMsg.classList.remove('hidden');
-            setTimeout(() => errorMsg.classList.add('hidden'), 4000);
-        }
-    }
-
-    const btnLogin = $('btn-login');
-    if (btnLogin) {
-        btnLogin.addEventListener('click', async () => {
-            try {
-                if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
-                await doLogin(emailInput.value, pwdInput.value);
-                showScreen('screen-setup');
-            } catch (e) {
-                console.error("Login Error:", e);
-                showError(e.message || 'Credenciales incorrectas');
-            }
-        });
-    }
-
+    // Los botones btn-login, btn-register, btn-guest no existen en el HTML actual.
+    // Si existieran por alguna versión futura, los dejamos como no-op seguros.
+    const btnLogin    = $('btn-login');
     const btnRegister = $('btn-register');
-    if (btnRegister) {
-        btnRegister.addEventListener('click', async () => {
-            try {
-                if(!emailInput.value || !pwdInput.value) throw new Error("Faltan datos");
-                await doRegister(emailInput.value, pwdInput.value);
-                showScreen('screen-setup');
-            } catch (e) {
-                console.error("Register Error:", e);
-                showError(e.message || 'Error al crear cuenta.');
-            }
-        });
-    }
+    const btnGuest    = $('btn-guest');
 
-    const btnGuest = $('btn-guest');
-    if (btnGuest) {
-        btnGuest.addEventListener('click', async () => {
-            try {
-                await doGuestLogin();
-                showScreen('screen-setup');
-            } catch (e) {
-                console.error(e);
-                showError('Error: ' + (e.message || 'Error al entrar como invitado'));
-            }
-        });
-    }
+    if (btnLogin)    btnLogin.addEventListener('click',    () => showScreen('screen-setup'));
+    if (btnRegister) btnRegister.addEventListener('click', () => showScreen('screen-setup'));
+    if (btnGuest)    btnGuest.addEventListener('click',    () => showScreen('screen-setup'));
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -1391,23 +1561,20 @@ function initProfileModal() {
         });
     });
     
-    $('btn-profile-save').addEventListener('click', async () => {
+    $('btn-profile-save').addEventListener('click', () => {
         const username = $('profile-username').value.trim();
         const selectedOpt = document.querySelector('.avatar-option.selected');
         const avatar = selectedOpt ? selectedOpt.dataset.emoji : '👤';
-        
+
         state.profile.username = username;
         state.profile.avatar = avatar;
-        
-        localStorage.setItem(LS_PROFILE, JSON.stringify(state.profile));
+
+        // Guardar localmente primero (siempre funciona)
+        localSaveProfile(state.profile);
         updateProfileUI();
-        
+
         $('modal-profile').classList.add('hidden');
-        
-        // Save to Supabase
-        if (typeof fb_saveProfile === 'function') {
-            await fb_saveProfile(username, avatar);
-        }
+        // No llamamos a fb_saveProfile() — el perfil es 100% local
     });
 }
 
