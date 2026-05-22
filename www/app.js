@@ -1362,10 +1362,18 @@ function initDeepLinks() {
                     screenDownload.classList.add('active');
                 }
                 
-                // Attempt to auto-redirect to the custom scheme
+                const appStoreUrl = 'https://apps.apple.com/us/app/dominoscorepro/id6770705123';
+                const customScheme = 'dominoscorepro://watch?code=' + code;
+
+                // Intentar abrir la app nativa primero
+                window.location.href = customScheme;
+
+                // Fallback: Si después de 2.5s la página sigue activa, ir a la App Store
                 setTimeout(() => {
-                    window.location.href = 'dominoscorepro://watch?code=' + code;
-                }, 500);
+                    if (!document.hidden) {
+                        window.location.href = appStoreUrl;
+                    }
+                }, 2500);
             } else {
                 // Cold start inside native app via query param
                 joinSpectatorRoom(code);
