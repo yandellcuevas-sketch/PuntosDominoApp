@@ -1308,6 +1308,16 @@ async function joinSpectatorRoom(code) {
     if (!subscribed && !state.isSpectator) {
         showJoinStatus('');
         showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
+    } else if (subscribed && state.isSpectator) {
+        // Check if running in a web browser context (not Capacitor Native)
+        const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+        if (!isNative && !window.downloadPromptDismissed) {
+            const screenDownload = document.getElementById('screen-download');
+            if (screenDownload) {
+                screenDownload.classList.remove('hidden');
+                screenDownload.style.display = 'flex';
+            }
+        }
     }
 }
 
@@ -1370,25 +1380,7 @@ function initDeepLinks() {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         if (code) {
-            // Check if running in a web browser context (not Capacitor Native)
-            if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-                // 1. Mostrar la sala en el fondo (web spectator)
-                joinSpectatorRoom(code);
-
-                // 2. Mostrar el modal/overlay premium para sugerir la app nativa
-                const screenDownload = document.getElementById('screen-download');
-                if (screenDownload) {
-                    screenDownload.classList.remove('hidden');
-                    screenDownload.style.display = 'flex';
-                }
-                
-                // NOTA: Ya no intentamos forzar window.location.href = customScheme automáticamente 
-                // porque en iOS Safari eso genera una alerta fantasma nativa ("Safari no puede abrir la página") 
-                // si el usuario no tiene la app instalada. El modal overlay es suficiente.
-            } else {
-                // Cold start inside native app via query param
-                joinSpectatorRoom(code);
-            }
+            joinSpectatorRoom(code);
         }
     }
 
