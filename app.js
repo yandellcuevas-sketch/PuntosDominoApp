@@ -124,8 +124,12 @@ function saveGame() {
         return;
     }
     if (state.game) {
-        // Paso 1: guardar localmente (siempre, nunca falla)
-        localSaveGame(state.game);
+        // Paso 1: guardar localmente (o limpiar si ya terminó)
+        if (state.game.status === 'finished') {
+            localClearGame();
+        } else {
+            localSaveGame(state.game);
+        }
         // Paso 2: publicar para espectadores si hay sala activa (fire-and-forget)
         if (typeof spectatorPublishState === 'function') {
             const minimal = _gameToSpectatorMinimal(state.game);

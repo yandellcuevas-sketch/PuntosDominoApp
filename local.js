@@ -72,10 +72,15 @@
 
     /**
      * Carga la partida activa desde localStorage.
-     * @returns {Object|null}   Objeto de la partida, o null si no hay ninguna.
+     * @returns {Object|null}   Objeto de la partida, o null si no hay ninguna o está terminada.
      */
     function localLoadGame() {
-        return _read(_KEYS.GAME, null);
+        var game = _read(_KEYS.GAME, null);
+        if (game && game.status === 'finished') {
+            localClearGame();
+            return null;
+        }
+        return game;
     }
 
     /**
