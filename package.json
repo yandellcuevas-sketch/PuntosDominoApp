@@ -1,6 +1,6 @@
 {
   "name": "puntosdominoappstore",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "¡Bienvenido a **DominóScore**! Una aplicación web moderna y dinámica diseñada para llevar la anotación de puntos en tus partidas de dominó al siguiente nivel. Cuenta con sincronización en tiempo real y un modo espectador único.",
   "main": "app.js",
   "scripts": {
