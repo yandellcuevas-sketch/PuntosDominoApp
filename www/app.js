@@ -141,6 +141,11 @@ function saveHistory() {
 function loadStorage() {
     // Cargar partida activa
     state.game = localLoadGame(); // retorna null si no hay
+    if (state.game && state.game.status === 'active' && !state.isSpectator) {
+        if (typeof spectatorCreateRoom === 'function') {
+            spectatorCreateRoom(state.game);
+        }
+    }
     // Cargar historial
     state.history = localLoadHistory(); // retorna [] si no hay
     // Cargar configuración (sonido + perfil)
@@ -417,6 +422,12 @@ function startGame() {
 
         // Crear partida 100% local
         state.game = buildGame(v);
+        
+        // Inicializar la sala de espectador en Supabase (fire-and-forget)
+        if (typeof spectatorCreateRoom === 'function') {
+            spectatorCreateRoom(state.game);
+        }
+
         saveGame(); // Guarda localmente primero; también publica a espectadores si hay sala
 
         try {
@@ -1341,6 +1352,12 @@ window.leaveSpectatorMode = function leaveSpectatorMode() {
     // Restore the local game safely
     state.game = typeof localLoadGame === 'function' ? localLoadGame() : null;
     state.isSpectator = false;
+    
+    if (state.game && state.game.status === 'active') {
+        if (typeof spectatorCreateRoom === 'function') {
+            spectatorCreateRoom(state.game);
+        }
+    }
     
     hideFinishedSpectatorOverlay();
     showScreen('screen-setup');
