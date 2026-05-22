@@ -1489,24 +1489,8 @@ function init() {
         showScreen('screen-setup');
     }
 
-    // 4. Auto-unirse si viene el código en la URL (?code=XXXX)
-    //    Usa el modo espectador (Supabase opcional) con fallback visible
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get('code');
-    if (roomCode) {
-        const cleanCode = roomCode.trim().toUpperCase();
-        if (cleanCode && cleanCode.length === 4) {
-            const joinCodeInput = $('join-code');
-            if (joinCodeInput) {
-                joinCodeInput.value = cleanCode;
-                // Leve delay para que la UI esté lista
-                setTimeout(() => {
-                    const btnJoin = $('btn-join');
-                    if (btnJoin) btnJoin.click();
-                }, 500);
-            }
-        }
-    }
+    // 4. Iniciar manejo de enlaces profundos y fallbacks web
+    initDeepLinks();
 
     // 5. Ocultar el splash (mínimo 2 segundos después de iniciar)
     hideSplash(initStartTime);
