@@ -593,11 +593,11 @@ body {
 #screen-game {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
     max-width: 700px;
     margin: 0 auto;
-    overflow: hidden;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
 /* Topbar */
