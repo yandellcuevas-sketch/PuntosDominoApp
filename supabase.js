@@ -123,7 +123,7 @@
         var code = minimalState.room_code || minimalState.code || _currentRoomCode;
         if (!code) return;
 
-        _currentRoomCode = code.toUpperCase();
+        _currentRoomCode = decodeURIComponent(String(code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
         var client = _getClient();
         if (!client) return;
@@ -146,14 +146,44 @@
         };
 
         try {
-            await Promise.race([
+            var result = await Promise.race([
                 client.from('spectator_rooms').upsert(payload, { onConflict: 'room_code' }),
                 new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT_MS)
                 )
             ]);
+
+            if (result && result.error) {
+                console.warn('[spectator] Error de base de datos al publicar estado:', result.error.message, result.error.details);
+                
+                var errStr = String(result.error.message || '').toLowerCase();
+                var errDetail = String(result.error.details || '').toLowerCase();
+                if (errStr.includes('foreign key') || errStr.includes('violates') || errStr.includes('policy') || errStr.includes('security') ||
+                    errDetail.includes('foreign key') || errDetail.includes('violates') || errDetail.includes('policy')) {
+                    
+                    console.log('[spectator] Detectado error de autenticación/clave foránea en DB. Intentando re-autenticar...');
+                    _authInitialized = false;
+                    _anonUserId = null;
+                    try {
+                        await client.auth.signOut();
+                    } catch (signOutErr) {
+                        console.warn('[spectator] Error al hacer signOut:', signOutErr.message);
+                    }
+                    
+                    var newUserId = await _ensureAnonAuth();
+                    if (newUserId) {
+                        payload.user_id = newUserId;
+                        console.log('[spectator] Re-intentando upsert con nueva sesión...');
+                        var retryResult = await client.from('spectator_rooms').upsert(payload, { onConflict: 'room_code' });
+                        if (retryResult && retryResult.error) {
+                            console.error('[spectator] Re-intento de upsert falló también:', retryResult.error.message);
+                        } else {
+                            console.log('[spectator] Re-intento de upsert exitoso ✓');
+                        }
+                    }
+                }
+            }
         } catch (e) {
-            // Silencioso — publicación falló pero la partida local continúa
             console.warn('[spectator] Publicación falló (la partida local continúa):', e.message);
         }
     }
@@ -169,7 +199,7 @@
         var client = _getClient();
         if (!client || !navigator.onLine) return null;
 
-        _currentRoomCode = gameState.code;
+        _currentRoomCode = decodeURIComponent(String(gameState.code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
         var userId = await _ensureAnonAuth();
         if (!userId) {
@@ -194,8 +224,8 @@
 
         var client = _getClient();
         if (!client || !navigator.onLine) {
-            // Llamar callback con null para que la UI muestre el estado de error
-            _safeCallback(onUpdate, null);
+            // Llamar callback con error para que la UI muestre el estado de error de conexión
+            _safeCallback(onUpdate, null, new Error('offline'));
             return false;
         }
 
@@ -204,11 +234,11 @@
 
         var userId = await _ensureAnonAuth();
         if (!userId) {
-            _safeCallback(onUpdate, null);
+            _safeCallback(onUpdate, null, new Error('auth_failed'));
             return false;
         }
 
-        _currentRoomCode = code.toUpperCase();
+        _currentRoomCode = decodeURIComponent(String(code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
         // 1. Obtener estado actual (snapshot inicial)
         try {
@@ -222,15 +252,18 @@
                 )
             ]);
 
-            if (snapshotResult && snapshotResult.data) {
-                _safeCallback(onUpdate, snapshotResult.data);
+            if (snapshotResult && snapshotResult.error) {
+                console.warn('[spectator] Error consultando sala:', snapshotResult.error.message);
+                _safeCallback(onUpdate, null, snapshotResult.error);
+            } else if (snapshotResult && snapshotResult.data) {
+                _safeCallback(onUpdate, snapshotResult.data, null);
             } else {
                 // La sala no existe aún o no se encontró
-                _safeCallback(onUpdate, null);
+                _safeCallback(onUpdate, null, null);
             }
         } catch (e) {
             console.warn('[spectator] No se pudo obtener snapshot inicial:', e.message);
-            _safeCallback(onUpdate, null);
+            _safeCallback(onUpdate, null, e);
             return false;
         }
 
@@ -248,13 +281,14 @@
                     },
                     function (payload) {
                         if (payload && payload.new) {
-                            _safeCallback(onUpdate, payload.new);
+                            _safeCallback(onUpdate, payload.new, null);
                         }
                     }
                 )
                 .subscribe(function (status) {
                     if (status === 'CHANNEL_ERROR') {
-                        console.warn('[spectator] Error en canal realtime. La sala podría estar desconectada.');
+                        console.warn('[spectator] Error en canal realtime.');
+                        _safeCallback(onUpdate, null, new Error('channel_error'));
                     }
                 });
         } catch (e) {
@@ -307,9 +341,9 @@
     /**
      * Llama un callback de forma segura — nunca lanza excepción.
      */
-    function _safeCallback(fn, arg) {
+    function _safeCallback(fn, arg1, arg2) {
         try {
-            fn(arg);
+            fn(arg1, arg2);
         } catch (e) {
             console.warn('[spectator] Error en callback de espectador:', e.message);
         }

@@ -119,11 +119,15 @@ function showScreen(id) {
 //    Nunca bloquea, nunca muestra errores técnicos al usuario.
 
 function saveGame() {
+    if (state.isSpectator) {
+        // En modo espectador, NUNCA guardamos el estado de la sala en el almacenamiento local
+        return;
+    }
     if (state.game) {
         // Paso 1: guardar localmente (siempre, nunca falla)
         localSaveGame(state.game);
         // Paso 2: publicar para espectadores si hay sala activa (fire-and-forget)
-        if (!state.isSpectator && typeof spectatorPublishState === 'function') {
+        if (typeof spectatorPublishState === 'function') {
             const minimal = _gameToSpectatorMinimal(state.game);
             if (minimal) spectatorPublishState(minimal); // async, ignoramos el resultado
         }
@@ -245,6 +249,7 @@ function checkWinner() {
 
 // ─── Guardar en historial ─────────────────────────────────────────
 function saveToHistory() {
+    if (state.isSpectator) return; // Nunca guardar el historial en modo espectador
     if (!state.game || state.game.savedToHistory) return;
     const g = state.game;
     const winner = g.teams[g.winner - 1];
@@ -1247,6 +1252,10 @@ function initJoinControls() {
 async function joinSpectatorRoom(code) {
     if (!code) return;
 
+    // Normalizar código: trim, uppercase, decodificar URI y remover caracteres no-alfanuméricos
+    code = decodeURIComponent(String(code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!code) return;
+
     // 1. Mostrar de inmediato el modal de descarga en entorno web (si no fue descartado previamente)
     const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
     if (!isNative && !localStorage.getItem('downloadPromptDismissed')) {
@@ -1269,11 +1278,27 @@ async function joinSpectatorRoom(code) {
     let subscribed = false;
     try {
         if (typeof spectatorSubscribeRoom === 'function') {
-            subscribed = await spectatorSubscribeRoom(code, (minimalState) => {
+            subscribed = await spectatorSubscribeRoom(code, (minimalState, error) => {
+                if (error) {
+                    if (!state.isSpectator) {
+                        showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
+                        showJoinStatus('');
+                        state.isSpectator = false;
+                    } else {
+                        console.warn('[app] Error en canal de espectador activo:', error.message);
+                    }
+                    return;
+                }
+                
                 if (!minimalState) {
-                    showJoinError('No se encontró la sala o no está disponible.');
-                    showJoinStatus('');
-                    state.isSpectator = false;
+                    if (!state.isSpectator) {
+                        showJoinError('Sala no encontrada.');
+                        showJoinStatus('');
+                        state.isSpectator = false;
+                    } else {
+                        showJoinError('La sala ha sido cerrada por el anfitrión.');
+                        if (typeof leaveSpectatorMode === 'function') leaveSpectatorMode();
+                    }
                     return;
                 }
                 
@@ -1368,6 +1393,12 @@ window.leaveSpectatorMode = function leaveSpectatorMode() {
         if (typeof spectatorCreateRoom === 'function') {
             spectatorCreateRoom(state.game);
         }
+    }
+    
+    // Limpiar el parámetro ?code= de la URL para evitar re-unirse al recargar la página
+    if (window.history && window.history.replaceState) {
+        var cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
     }
     
     hideFinishedSpectatorOverlay();
