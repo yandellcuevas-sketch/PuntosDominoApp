@@ -99,16 +99,14 @@ function showScreen(id) {
         target.classList.add('active');
     }
 
+    // Adaptar visibilidad del botón de continuar si hay partida activa
     if (id === 'screen-setup') {
-        const btnStart = $('btn-start');
-        if (btnStart) {
-            const span = btnStart.querySelector('span');
-            if (span) {
-                if (state.game && state.game.status === 'active') {
-                    span.textContent = 'Continuar Partida';
-                } else {
-                    span.textContent = 'Iniciar Partida';
-                }
+        const btnContinue = $('btn-continue');
+        if (btnContinue) {
+            if (state.game && state.game.status === 'active') {
+                btnContinue.classList.remove('hidden');
+            } else {
+                btnContinue.classList.add('hidden');
             }
         }
     }
@@ -258,8 +256,13 @@ function saveToHistory() {
         capicuas: g.hands.filter(h => h.capi).length,
         isLisa: g.isLisa,
     };
-    state.history.unshift(entry);
-    saveHistory();
+    
+    // Safety check to prevent duplicates if state desyncs
+    if (!state.history.some(h => h.id === g.id)) {
+        state.history.unshift(entry);
+        saveHistory();
+    }
+    
     state.game.savedToHistory = true;
     saveGame();
     triggerAppReviewIfEligible();
@@ -324,6 +327,17 @@ function initSetupScreen() {
     });
 
     $('btn-start').addEventListener('click', startGame);
+    
+    const btnContinue = $('btn-continue');
+    if (btnContinue) {
+        btnContinue.addEventListener('click', () => {
+            if (state.game && state.game.status === 'active') {
+                if (typeof renderGameScreen === 'function') renderGameScreen();
+                showScreen('screen-game');
+            }
+        });
+    }
+
     $('btn-view-history').addEventListener('click', () => {
         renderHistory();
         showScreen('screen-history');
@@ -392,34 +406,43 @@ function showSetupError(msg) {
 }
 
 function startGame() {
-    // Si hay una partida activa, el botón actúa como "Continuar Partida"
+    const startLogic = () => {
+        const v = getSetupValues();
+        if (!v.t1p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 1.');
+        if (!v.t1p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 1.');
+        if (!v.t2p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 2.');
+        if (!v.t2p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 2.');
+        if (v.limit < 1) return showSetupError('El límite debe ser mayor a 0.');
+        if (v.capiValue < 1) return showSetupError('El valor de capicúa debe ser mayor a 0.');
+
+        // Crear partida 100% local
+        state.game = buildGame(v);
+        saveGame(); // Guarda localmente primero; también publica a espectadores si hay sala
+
+        try {
+            if (typeof renderGameScreen === 'function') renderGameScreen();
+            if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
+            showScreen('screen-game');
+        } catch (e) {
+            console.error('[app] Error al renderizar pantalla de juego:', e);
+            // No mostrar alert al usuario — la app continua
+        }
+        playTone(440, 'sine', 0.2, 0.15);
+    };
+
+    // Protección: no borrar partida activa sin intención explícita
     if (state.game && state.game.status === 'active') {
-        if (typeof renderGameScreen === 'function') renderGameScreen();
-        showScreen('screen-game');
-        return;
+        confirmAction(
+            '¿Iniciar nueva partida?',
+            'Se perderá la partida activa actual.',
+            () => {
+                localClearGame();
+                startLogic();
+            }
+        );
+    } else {
+        startLogic();
     }
-
-    const v = getSetupValues();
-    if (!v.t1p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 1.');
-    if (!v.t1p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 1.');
-    if (!v.t2p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 2.');
-    if (!v.t2p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 2.');
-    if (v.limit < 1) return showSetupError('El límite debe ser mayor a 0.');
-    if (v.capiValue < 1) return showSetupError('El valor de capicúa debe ser mayor a 0.');
-
-    // Crear partida 100% local
-    state.game = buildGame(v);
-    saveGame(); // Guarda localmente primero; también publica a espectadores si hay sala
-
-    try {
-        if (typeof renderGameScreen === 'function') renderGameScreen();
-        if ($('lbl-game-code')) $('lbl-game-code').textContent = state.game.code || '----';
-        showScreen('screen-game');
-    } catch (e) {
-        console.error('[app] Error al renderizar pantalla de juego:', e);
-        // No mostrar alert al usuario — la app continua
-    }
-    playTone(440, 'sine', 0.2, 0.15);
 }
 
 // ─── UI: Game Screen ──────────────────────────────────────────────
