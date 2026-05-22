@@ -17,6 +17,7 @@
         HISTORY : 'domino_history',
         SOUND   : 'domino_sound',
         PROFILE : 'domino_profile',
+        REVIEW  : 'domino_review_state',
     };
 
     // ── Helper seguro de lectura ──────────────────────────────────────
@@ -176,6 +177,25 @@
     }
 
     // ════════════════════════════════════════════════════════════════
+    //  NATIVE APP REVIEW STATE
+    // ════════════════════════════════════════════════════════════════
+
+    function localIncrementMatchCount() {
+        var state = _read(_KEYS.REVIEW, { matches: 0, requested: false });
+        if (!state.requested) {
+            state.matches = (state.matches || 0) + 1;
+            _write(_KEYS.REVIEW, state);
+        }
+        return state;
+    }
+
+    function localMarkReviewRequested() {
+        var state = _read(_KEYS.REVIEW, { matches: 0, requested: false });
+        state.requested = true;
+        _write(_KEYS.REVIEW, state);
+    }
+
+    // ════════════════════════════════════════════════════════════════
     //  EXPORTACIÓN GLOBAL
     // ════════════════════════════════════════════════════════════════
     window.localSaveGame     = localSaveGame;
@@ -187,6 +207,8 @@
     window.localLoadSettings = localLoadSettings;
     window.localSaveProfile  = localSaveProfile;
     window.localLoadProfile  = localLoadProfile;
+    window.localIncrementMatchCount = localIncrementMatchCount;
+    window.localMarkReviewRequested = localMarkReviewRequested;
 
     console.log('[local] Capa de persistencia local inicializada ✓');
 })();

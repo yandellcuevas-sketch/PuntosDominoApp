@@ -248,6 +248,33 @@ function saveToHistory() {
     saveHistory();
     state.game.savedToHistory = true;
     saveGame();
+    triggerAppReviewIfEligible();
+}
+
+// ─── Native App Review ────────────────────────────────────────────
+async function triggerAppReviewIfEligible() {
+    try {
+        if (typeof localIncrementMatchCount !== 'function') return;
+        
+        const reviewState = localIncrementMatchCount();
+        
+        // Solicitar review a partir de la 3ra partida y si no se ha solicitado
+        if (reviewState.matches >= 3 && !reviewState.requested) {
+            if (window.Capacitor && window.Capacitor.getPlatform() === 'ios') {
+                const { InAppReview } = window.Capacitor.Plugins;
+                if (InAppReview && typeof InAppReview.requestReview === 'function') {
+                    // Marcamos antes para evitar bucles si el plugin falla o cuelga
+                    if (typeof localMarkReviewRequested === 'function') {
+                        localMarkReviewRequested();
+                    }
+                    await InAppReview.requestReview();
+                    console.log('[app] Native iOS review prompt requested.');
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[app] Error triggering app review:', e.message);
+    }
 }
 
 // ─── UI: Setup ────────────────────────────────────────────────────
@@ -576,7 +603,9 @@ function initGameControls() {
         showScreen('screen-history');
     });
     $('btn-back-to-setup').addEventListener('click', () => {
-        if (state.game && state.game.status === 'active') {
+        if (state.isSpectator) {
+            leaveSpectatorMode();
+        } else if (state.game && state.game.status === 'active') {
             confirmAction(
                 '¿Ir al inicio?',
                 'La partida activa se guardará y podrás continuar después.',
@@ -1154,56 +1183,159 @@ function initJoinControls() {
             showJoinError('Introduce un código de sala.');
             return;
         }
-
-        showJoinError('');
-        showJoinStatus('Buscando la sala…');
-
-        // Intentar suscripción al espectador (requiere Supabase + internet)
-        let subscribed = false;
-        try {
-            if (typeof spectatorSubscribeRoom === 'function') {
-                subscribed = await spectatorSubscribeRoom(code, (minimalState) => {
-                    if (!minimalState) {
-                        showJoinError('No se encontró la sala o no está disponible.');
-                        showJoinStatus('');
-                        state.isSpectator = false;
-                        return;
-                    }
-                    // Construir objeto de partida de solo lectura para mostrar el marcador
-                    state.isSpectator = true;
-                    state.game = {
-                        code         : code,
-                        name         : code,
-                        limit        : minimalState.target_score || 100,
-                        status       : minimalState.game_status  || 'active',
-                        teams        : [
-                            { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
-                            { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
-                        ],
-                        hands        : [],
-                        capiValue    : 25,
-                        startTime    : new Date().toISOString(),
-                        winner       : null,
-                        isLisa       : false,
-                        savedToHistory: false,
-                    };
-                    if ($('lbl-game-code')) $('lbl-game-code').textContent = code;
-                    if (typeof renderGameScreen === 'function') renderGameScreen();
-                    showScreen('screen-game');
-                    applySpectatorMode();
-                    showJoinStatus('');
-                });
-            }
-        } catch (e) {
-            console.warn('[app] Error en modo espectador:', e.message);
-            subscribed = false;
-        }
-
-        if (!subscribed) {
-            showJoinStatus('');
-            showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
-        }
+        joinSpectatorRoom(code);
     });
+}
+
+// ─── Spectator Deep Linking & Join Flow ─────────────────────────
+async function joinSpectatorRoom(code) {
+    if (!code) return;
+
+    showScreen('screen-setup');
+    const btnJoin = $('btn-join-room');
+    if (btnJoin) btnJoin.scrollIntoView();
+
+    showJoinError('');
+    showJoinStatus('Buscando la sala…');
+
+    if (typeof spectatorCloseRoom === 'function') spectatorCloseRoom();
+
+    let subscribed = false;
+    try {
+        if (typeof spectatorSubscribeRoom === 'function') {
+            subscribed = await spectatorSubscribeRoom(code, (minimalState) => {
+                if (!minimalState) {
+                    showJoinError('No se encontró la sala o no está disponible.');
+                    showJoinStatus('');
+                    state.isSpectator = false;
+                    return;
+                }
+                
+                const isFinished = minimalState.game_status === 'finished';
+
+                state.isSpectator = true;
+                state.game = {
+                    code         : code,
+                    name         : code,
+                    limit        : minimalState.target_score || 100,
+                    status       : minimalState.game_status  || 'active',
+                    teams        : [
+                        { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
+                        { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
+                    ],
+                    hands        : [],
+                    capiValue    : 25,
+                    startTime    : new Date().toISOString(),
+                    winner       : isFinished ? 1 : null,
+                    isLisa       : false,
+                    savedToHistory: false,
+                };
+
+                if ($('lbl-game-code')) $('lbl-game-code').textContent = code;
+                if (typeof renderGameScreen === 'function') renderGameScreen();
+                showScreen('screen-game');
+                applySpectatorMode();
+                showJoinStatus('');
+
+                if (isFinished) {
+                    showFinishedSpectatorOverlay();
+                } else {
+                    hideFinishedSpectatorOverlay();
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('[app] Error en modo espectador:', e.message);
+        subscribed = false;
+    }
+
+    if (!subscribed) {
+        showJoinStatus('');
+        showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
+    }
+}
+
+function showFinishedSpectatorOverlay() {
+    let overlay = document.getElementById('spectator-finished-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'spectator-finished-overlay';
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.85)';
+        overlay.style.zIndex = '50';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.innerHTML = `
+            <h2 style="color: var(--text-light); margin-bottom: 10px;">Partida Finalizada</h2>
+            <p style="color: var(--text-muted); text-align: center; max-width: 280px; margin-bottom: 20px;">Esta partida ha terminado y ya no recibirá más actualizaciones.</p>
+            <button class="btn-primary" onclick="leaveSpectatorMode()">Salir del Modo Espectador</button>
+        `;
+        const container = document.querySelector('.game-container');
+        if (container) container.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideFinishedSpectatorOverlay() {
+    const overlay = document.getElementById('spectator-finished-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+window.leaveSpectatorMode = function leaveSpectatorMode() {
+    if (typeof spectatorCloseRoom === 'function') spectatorCloseRoom();
+    
+    // Restore the local game safely
+    state.game = typeof localLoadGame === 'function' ? localLoadGame() : null;
+    state.isSpectator = false;
+    
+    hideFinishedSpectatorOverlay();
+    showScreen('screen-setup');
+};
+
+function initDeepLinks() {
+    // 1. Web Fallback Check
+    if (window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        if (code) {
+            // Check if running in a web browser context (not Capacitor Native)
+            if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
+                // Show the web download screen
+                const screenDownload = document.getElementById('screen-download');
+                if (screenDownload) {
+                    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+                    screenDownload.classList.remove('hidden');
+                    screenDownload.classList.add('active');
+                }
+                
+                // Attempt to auto-redirect to the custom scheme
+                setTimeout(() => {
+                    window.location.href = 'dominoscorepro://watch?code=' + code;
+                }, 500);
+            } else {
+                // Cold start inside native app via query param
+                joinSpectatorRoom(code);
+            }
+        }
+    }
+
+    // 2. Native Deep Link Listener
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.addListener('appUrlOpen', data => {
+            if (data.url && data.url.includes('?code=')) {
+                const codeMatch = data.url.match(/code=([^&]+)/);
+                if (codeMatch && codeMatch[1]) {
+                    joinSpectatorRoom(codeMatch[1]);
+                }
+            }
+        });
+    }
 }
 
 function showJoinError(msg) {
