@@ -98,6 +98,20 @@ function showScreen(id) {
         target.classList.remove('hidden');
         target.classList.add('active');
     }
+
+    if (id === 'screen-setup') {
+        const btnStart = $('btn-start');
+        if (btnStart) {
+            const span = btnStart.querySelector('span');
+            if (span) {
+                if (state.game && state.game.status === 'active') {
+                    span.textContent = 'Continuar Partida';
+                } else {
+                    span.textContent = 'Iniciar Partida';
+                }
+            }
+        }
+    }
 }
 
 // ─── Persistencia ─────────────────────────────────────────────────
@@ -378,6 +392,13 @@ function showSetupError(msg) {
 }
 
 function startGame() {
+    // Si hay una partida activa, el botón actúa como "Continuar Partida"
+    if (state.game && state.game.status === 'active') {
+        if (typeof renderGameScreen === 'function') renderGameScreen();
+        showScreen('screen-game');
+        return;
+    }
+
     const v = getSetupValues();
     if (!v.t1p1) return showSetupError('Ingresa el nombre del Jugador 1 del Equipo 1.');
     if (!v.t1p2) return showSetupError('Ingresa el nombre del Jugador 2 del Equipo 1.');
@@ -1276,8 +1297,12 @@ function showFinishedSpectatorOverlay() {
             <p style="color: var(--text-muted); text-align: center; max-width: 280px; margin-bottom: 20px;">Esta partida ha terminado y ya no recibirá más actualizaciones.</p>
             <button class="btn-primary" onclick="leaveSpectatorMode()">Salir del Modo Espectador</button>
         `;
-        const container = document.querySelector('.game-container');
-        if (container) container.appendChild(overlay);
+        const container = document.getElementById('screen-game');
+        if (container) {
+            container.appendChild(overlay);
+        } else {
+            document.body.appendChild(overlay);
+        }
     }
     overlay.style.display = 'flex';
 }
