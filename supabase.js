@@ -23,8 +23,8 @@
     var _currentChannel  = null;   // canal realtime activo
     var _currentRoomCode = null;   // código de sala activo
 
-    // Timeout en ms para llamadas de red
-    var NETWORK_TIMEOUT_MS = 6000;
+    // Timeout en ms para llamadas de red (Aumentado a 15s para conexiones lentas iniciales)
+    var NETWORK_TIMEOUT_MS = 15000;
 
     // ── Inicialización lazy del cliente ──────────────────────────────
     function _getClient() {

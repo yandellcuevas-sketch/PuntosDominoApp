@@ -1304,7 +1304,7 @@ async function joinSpectatorRoom(code) {
         subscribed = false;
     }
 
-    if (!subscribed) {
+    if (!subscribed && !state.isSpectator) {
         showJoinStatus('');
         showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
     }
