@@ -1365,15 +1365,17 @@ function initDeepLinks() {
                 const appStoreUrl = 'https://apps.apple.com/us/app/dominoscorepro/id6770705123';
                 const customScheme = 'dominoscorepro://watch?code=' + code;
 
-                // Intentar abrir la app nativa primero
-                window.location.href = customScheme;
+                // Permitir que el DOM se dibuje (100ms) antes de intentar la navegación que pausa el hilo
+                setTimeout(() => {
+                    window.location.href = customScheme;
+                }, 100);
 
                 // Fallback: Si después de 2.5s la página sigue activa, ir a la App Store
                 setTimeout(() => {
                     if (!document.hidden) {
                         window.location.href = appStoreUrl;
                     }
-                }, 2500);
+                }, 2600);
             } else {
                 // Cold start inside native app via query param
                 joinSpectatorRoom(code);
