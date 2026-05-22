@@ -1371,28 +1371,22 @@ function initDeepLinks() {
         if (code) {
             // Check if running in a web browser context (not Capacitor Native)
             if (!window.Capacitor || !window.Capacitor.isNativePlatform()) {
-                // Show the web download screen
+                // 1. Mostrar la sala en el fondo (web spectator)
+                joinSpectatorRoom(code);
+
+                // 2. Mostrar el modal/overlay premium para sugerir la app nativa
                 const screenDownload = document.getElementById('screen-download');
                 if (screenDownload) {
-                    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
                     screenDownload.classList.remove('hidden');
-                    screenDownload.classList.add('active');
+                    screenDownload.style.display = 'flex';
                 }
                 
-                const appStoreUrl = 'https://apps.apple.com/us/app/dominoscorepro/id6770705123';
                 const customScheme = 'dominoscorepro://watch?code=' + code;
 
-                // Permitir que el DOM se dibuje (100ms) antes de intentar la navegación que pausa el hilo
+                // 3. Intentar abrir la app nativa (solo una vez, sin forzar redirect si falla)
                 setTimeout(() => {
                     window.location.href = customScheme;
                 }, 100);
-
-                // Fallback: Si después de 2.5s la página sigue activa, ir a la App Store
-                setTimeout(() => {
-                    if (!document.hidden) {
-                        window.location.href = appStoreUrl;
-                    }
-                }, 2600);
             } else {
                 // Cold start inside native app via query param
                 joinSpectatorRoom(code);
