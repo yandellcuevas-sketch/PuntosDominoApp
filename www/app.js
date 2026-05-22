@@ -99,6 +99,11 @@ function showScreen(id) {
         target.classList.add('active');
     }
 
+    // Reset scroll position to top when changing screens
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo(0, 0);
+    }
+
     // Adaptar visibilidad del botón de continuar si hay partida activa
     if (id === 'screen-setup') {
         const btnContinue = $('btn-continue');
