@@ -179,6 +179,7 @@ function _gameToSpectatorMinimal(g) {
         target_score : g.limit || 100,
         current_round: (g.hands || []).length,
         game_status  : g.status || 'active',
+        hands        : g.hands || [],
     };
 }
 
@@ -1360,7 +1361,7 @@ async function joinSpectatorRoom(input) {
                         { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
                         { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
                     ],
-                    hands        : [],
+                    hands        : minimalState.hands || [],
                     capiValue    : 25,
                     startTime    : new Date().toISOString(),
                     winner       : isFinished ? 1 : null,

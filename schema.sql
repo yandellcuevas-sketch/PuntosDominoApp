@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.spectator_rooms (
     target_score integer NOT NULL DEFAULT 100,
     current_round integer NOT NULL DEFAULT 0,
     game_status  text NOT NULL DEFAULT 'active',
+    hands        jsonb NOT NULL DEFAULT '[]'::jsonb,
     updated_at   timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

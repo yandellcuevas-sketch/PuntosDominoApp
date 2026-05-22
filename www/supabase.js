@@ -146,6 +146,7 @@
             target_score : minimalState.target_score || 0,
             current_round: minimalState.current_round || 0,
             game_status  : minimalState.game_status  || 'active',
+            hands        : minimalState.hands        || [],
             updated_at   : new Date().toISOString(),
         };
 
@@ -337,6 +338,7 @@
             target_score : g.limit || 100,
             current_round: (g.hands || []).length,
             game_status  : g.status || 'active',
+            hands        : g.hands || [],
         };
     }
 
@@ -372,6 +374,7 @@
             target_score : gameData.limit || 100,
             current_round: (gameData.hands || []).length,
             game_status  : gameData.status || 'active',
+            hands        : gameData.hands || [],
         };
         
         _currentRoomCode = gameData.code.toUpperCase();
@@ -407,7 +410,7 @@
                         { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
                         { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
                     ],
-                    hands        : [],
+                    hands        : minimalState.hands || [],
                     capiValue    : 25,
                     startTime    : minimalState.updated_at || new Date().toISOString(),
                     winner       : minimalState.game_status === 'finished' ? 1 : null,
