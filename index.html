@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>DominóScore — Marcador Premium</title>
-    <link rel="stylesheet" href="style.css?v=4" />
+    <link rel="stylesheet" href="style.css?v=5" />
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -47,7 +50,7 @@
             <a href="https://apps.apple.com/us/app/dominoscorepro/id6770705123" style="background: #007aff; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; padding: 8px 22px; border-radius: 20px; flex-shrink: 0; margin-left: 10px; letter-spacing: 0.2px;">OPEN</a>
         </div>
         
-        <button onclick="window.downloadPromptDismissed = true; document.getElementById('screen-download').style.display='none';" style="background: transparent; color: #007aff; border: none; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; text-decoration: none; cursor: pointer; padding: 10px;">
+        <button onclick="localStorage.setItem('downloadPromptDismissed', 'true'); document.getElementById('screen-download').style.display='none';" style="background: transparent; color: #007aff; border: none; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; text-decoration: none; cursor: pointer; padding: 10px;">
             Continuar en el navegador
         </button>
     </div>
@@ -496,12 +499,12 @@
 
     <!-- Persistencia local (siempre disponible, sin red) -->
     <!-- Supabase SDK (solo para modo espectador, opcional) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" async></script>
+    <script src="supabase-js.js?v=5"></script>
 
     <!-- Módulo espectador (opcional, nunca bloquea el juego) -->
-    <script src="supabase.js?v=4"></script>
-    <script src="local.js?v=4"></script>
-    <script src="app.js?v=4"></script>
+    <script src="supabase.js?v=5"></script>
+    <script src="local.js?v=5"></script>
+    <script src="app.js?v=5"></script>
 </body>
 
 </html>

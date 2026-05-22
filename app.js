@@ -1247,9 +1247,9 @@ function initJoinControls() {
 async function joinSpectatorRoom(code) {
     if (!code) return;
 
-    // 1. Mostrar de inmediato el modal de descarga en entorno web (si no ha sido descartado ya)
+    // 1. Mostrar de inmediato el modal de descarga en entorno web (si no fue descartado previamente)
     const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-    if (!isNative && !window.downloadPromptDismissed) {
+    if (!isNative && !localStorage.getItem('downloadPromptDismissed')) {
         const screenDownload = document.getElementById('screen-download');
         if (screenDownload) {
             screenDownload.classList.remove('hidden');
