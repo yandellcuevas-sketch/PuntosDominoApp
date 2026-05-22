@@ -118,8 +118,11 @@
      * @param {Object} minimalState — datos mínimos de la partida
      */
     async function spectatorPublishState(minimalState) {
-        if (!_currentRoomCode) return;    // no hay sala activa
-        if (!minimalState)     return;
+        if (!minimalState || !minimalState.room_code) return;
+        
+        if (!_currentRoomCode) {
+            _currentRoomCode = minimalState.room_code.toUpperCase();
+        }
 
         var client = _getClient();
         if (!client) return;
