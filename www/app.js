@@ -158,6 +158,7 @@ function loadStorage() {
 function _gameToSpectatorMinimal(g) {
     if (!g || !g.teams || g.teams.length < 2) return null;
     return {
+        room_code    : g.code,
         team_a_name  : (g.teams[0].players || []).join(' & '),
         team_b_name  : (g.teams[1].players || []).join(' & '),
         team_a_score : g.teams[0].score || 0,

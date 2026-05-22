@@ -118,11 +118,12 @@
      * @param {Object} minimalState — datos mínimos de la partida
      */
     async function spectatorPublishState(minimalState) {
-        if (!minimalState || !minimalState.room_code) return;
-        
-        if (!_currentRoomCode) {
-            _currentRoomCode = minimalState.room_code.toUpperCase();
-        }
+        if (!minimalState) return;
+
+        var code = minimalState.room_code || minimalState.code || _currentRoomCode;
+        if (!code) return;
+
+        _currentRoomCode = code.toUpperCase();
 
         var client = _getClient();
         if (!client) return;
@@ -292,6 +293,7 @@
         if (!g || !g.teams) return null;
         var t1 = g.teams[0], t2 = g.teams[1];
         return {
+            room_code    : g.code,
             team_a_name  : (t1.players || []).join(' & '),
             team_b_name  : (t2.players || []).join(' & '),
             team_a_score : t1.score || 0,
@@ -318,8 +320,27 @@
     //  (para que referencias residuales no rompan nada)
     // ════════════════════════════════════════════════════════════════
 
-    /** @deprecated — ya no hace nada. La partida se guarda localmente. */
-    function fb_saveGame() { /* no-op intencional */ }
+    /** Legacy adapter for older native hosts: publishes state to spectator_rooms */
+    async function fb_saveGame(gameData) {
+        if (!gameData || !gameData.code) return;
+        
+        var t1 = gameData.teams && gameData.teams[0];
+        var t2 = gameData.teams && gameData.teams[1];
+        
+        var minimal = {
+            room_code    : gameData.code,
+            team_a_name  : t1 ? (t1.players || []).join(' & ') : '',
+            team_b_name  : t2 ? (t2.players || []).join(' & ') : '',
+            team_a_score : (t1 ? t1.score : 0) || 0,
+            team_b_score : (t2 ? t2.score : 0) || 0,
+            target_score : gameData.limit || 100,
+            current_round: (gameData.hands || []).length,
+            game_status  : gameData.status || 'active',
+        };
+        
+        _currentRoomCode = gameData.code.toUpperCase();
+        await spectatorPublishState(minimal);
+    }
 
     /** @deprecated — ya no hace nada. Historial se guarda localmente. */
     function fb_saveHistory() { /* no-op intencional */ }
@@ -330,11 +351,42 @@
     /** @deprecated — retorna null siempre. Perfil se lee localmente. */
     async function fb_getProfile() { return null; }
 
-    /** @deprecated — usa spectatorSubscribeRoom(). */
-    function fb_setRoomCode() { /* no-op intencional */ }
+    /** Legacy adapter for older native spectators: subscribes to spectator_rooms */
+    function fb_setRoomCode(code) {
+        if (!code) return;
+        
+        spectatorSubscribeRoom(code, function(minimalState) {
+            if (typeof window.fb_onGameChangeCallback === 'function') {
+                if (!minimalState) {
+                    window.fb_onGameChangeCallback(null);
+                    return;
+                }
+                
+                var legacyGameData = {
+                    id           : minimalState.room_code,
+                    code         : minimalState.room_code,
+                    limit        : minimalState.target_score || 100,
+                    status       : minimalState.game_status  || 'active',
+                    teams        : [
+                        { id: 1, players: (minimalState.team_a_name || 'Equipo 1').split(' & '), score: minimalState.team_a_score || 0 },
+                        { id: 2, players: (minimalState.team_b_name || 'Equipo 2').split(' & '), score: minimalState.team_b_score || 0 },
+                    ],
+                    hands        : [],
+                    capiValue    : 25,
+                    startTime    : minimalState.updated_at || new Date().toISOString(),
+                    winner       : minimalState.game_status === 'finished' ? 1 : null,
+                    isLisa       : false,
+                    savedToHistory: false
+                };
+                window.fb_onGameChangeCallback(legacyGameData);
+            }
+        });
+    }
 
-    /** @deprecated — usa spectatorSubscribeRoom(). */
-    function fb_onGameChange() { /* no-op intencional */ }
+    /** Legacy adapter for older native spectators: sets callback */
+    function fb_onGameChange(callback) {
+        window.fb_onGameChangeCallback = callback;
+    }
 
     // ════════════════════════════════════════════════════════════════
     //  EXPORTACIÓN GLOBAL
