@@ -1248,8 +1248,27 @@ function applySpectatorMode() {
     }
 }
 
+// ─── Splash Screen ───────────────────────────
+function hideSplash(startTime) {
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, 2000 - elapsed); // 2000ms = tiempo de la animación CSS splashBarLoad
+    
+    setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+            splash.classList.add('hide');
+            // Remove DOM element after transition completes (0.6s)
+            setTimeout(() => {
+                if (splash.parentNode) splash.remove();
+            }, 700);
+        }
+    }, remaining);
+}
+
 // ─── Init ─────────────────────────────────────────────────────────
 function init() {
+    const initStartTime = Date.now();
+
     // 1. Cargar todo desde localStorage — instantáneo, nunca falla
     loadStorage();
 
@@ -1298,6 +1317,9 @@ function init() {
             }
         }
     }
+
+    // 5. Ocultar el splash (mínimo 2 segundos después de iniciar)
+    hideSplash(initStartTime);
 }
 
 
