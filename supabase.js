@@ -51,49 +51,50 @@
     // ── Autenticación anónima lazy (solo para espectador) ────────────
     // Se llama en background cuando se activa el modo espectador.
     // NUNCA bloquea la UI ni el splash.
+    var _authPendingPromise = null;
+
     async function _ensureAnonAuth() {
         if (_authInitialized) return _anonUserId;
-        if (_authPending) return null;
+        if (_authPendingPromise) return await _authPendingPromise;
 
         var client = _getClient();
         if (!client) return null;
 
-        _authPending = true;
-        try {
-            // Intentar sesión existente primero (rápido, local)
-            var sessionResult = await Promise.race([
-                client.auth.getSession(),
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT_MS)
-                )
-            ]);
+        _authPendingPromise = (async () => {
+            try {
+                // Intentar sesión existente primero (rápido, local)
+                var sessionResult = await Promise.race([
+                    client.auth.getSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT_MS))
+                ]);
 
-            if (sessionResult && sessionResult.data && sessionResult.data.session) {
-                _anonUserId = sessionResult.data.session.user.id;
-                _authInitialized = true;
-                _authPending = false;
-                return _anonUserId;
+                if (sessionResult && sessionResult.data && sessionResult.data.session) {
+                    _anonUserId = sessionResult.data.session.user.id;
+                    _authInitialized = true;
+                    return _anonUserId;
+                }
+
+                // No hay sesión — iniciar anónimamente
+                var signInResult = await Promise.race([
+                    client.auth.signInAnonymously(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT_MS))
+                ]);
+
+                if (signInResult && signInResult.data && signInResult.data.user) {
+                    _anonUserId = signInResult.data.user.id;
+                    _authInitialized = true;
+                    return _anonUserId;
+                }
+            } catch (e) {
+                // Auth falló — modo espectador no disponible, pero la app continúa
+                console.warn('[spectator] Auth anónima falló (modo espectador no disponible):', e.message);
             }
+            return null;
+        })();
 
-            // No hay sesión — iniciar anónimamente
-            var signInResult = await Promise.race([
-                client.auth.signInAnonymously(),
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT_MS)
-                )
-            ]);
-
-            if (signInResult && signInResult.data && signInResult.data.user) {
-                _anonUserId = signInResult.data.user.id;
-                _authInitialized = true;
-            }
-        } catch (e) {
-            // Auth falló — modo espectador no disponible, pero la app continúa
-            console.warn('[spectator] Auth anónima falló (modo espectador no disponible):', e.message);
-        }
-
-        _authPending = false;
-        return _anonUserId;
+        var result = await _authPendingPromise;
+        _authPendingPromise = null;
+        return result;
     }
 
     // ════════════════════════════════════════════════════════════════
