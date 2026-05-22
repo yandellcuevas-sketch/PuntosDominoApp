@@ -1306,8 +1306,7 @@ async function joinSpectatorRoom(code) {
 
     if (!subscribed && !state.isSpectator) {
         showJoinStatus('');
-        // El usuario pidió explícitamente eliminar este mensaje para evitar confusiones
-        // showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
+        showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
     }
 }
 
