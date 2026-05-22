@@ -1381,12 +1381,9 @@ function initDeepLinks() {
                     screenDownload.style.display = 'flex';
                 }
                 
-                const customScheme = 'dominoscorepro://watch?code=' + code;
-
-                // 3. Intentar abrir la app nativa (solo una vez, sin forzar redirect si falla)
-                setTimeout(() => {
-                    window.location.href = customScheme;
-                }, 100);
+                // NOTA: Ya no intentamos forzar window.location.href = customScheme automáticamente 
+                // porque en iOS Safari eso genera una alerta fantasma nativa ("Safari no puede abrir la página") 
+                // si el usuario no tiene la app instalada. El modal overlay es suficiente.
             } else {
                 // Cold start inside native app via query param
                 joinSpectatorRoom(code);
