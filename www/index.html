@@ -34,8 +34,6 @@
         </div>
     </div>
 
-    </div>
-
     <!-- ───────────────────────────── DOWNLOAD SCREEN (WEB FALLBACK) ───────────────────────────── -->
     <div id="screen-download" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
         <div style="width: 100%; max-width: 400px; background: #1c1c1e; border-radius: 18px; padding: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.5); margin-bottom: 24px;">
@@ -49,7 +47,7 @@
             <a href="https://apps.apple.com/us/app/dominoscorepro/id6770705123" style="background: #007aff; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; padding: 8px 22px; border-radius: 20px; flex-shrink: 0; margin-left: 10px; letter-spacing: 0.2px;">OPEN</a>
         </div>
         
-        <button onclick="document.getElementById('screen-download').style.display='none';" style="background: transparent; color: #007aff; border: none; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; text-decoration: none; cursor: pointer; padding: 10px;">
+        <button onclick="window.downloadPromptDismissed = true; document.getElementById('screen-download').style.display='none';" style="background: transparent; color: #007aff; border: none; font-size: 16px; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; text-decoration: none; cursor: pointer; padding: 10px;">
             Continuar en el navegador
         </button>
     </div>
