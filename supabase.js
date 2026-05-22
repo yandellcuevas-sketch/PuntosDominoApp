@@ -129,12 +129,16 @@
         if (!client) return;
 
         // Asegurar auth en background (no bloqueante para el caller)
-        var userId = await _ensureAnonAuth();
-        if (!userId) return;
+        var userId = null;
+        try {
+            userId = await _ensureAnonAuth();
+        } catch (e) {
+            console.warn('[spectator] Auth error during publish:', e.message);
+        }
 
         var payload = {
             room_code    : _currentRoomCode,
-            user_id      : userId,
+            user_id      : userId || null,
             team_a_name  : minimalState.team_a_name  || '',
             team_b_name  : minimalState.team_b_name  || '',
             team_a_score : minimalState.team_a_score || 0,
@@ -171,15 +175,13 @@
                     }
                     
                     var newUserId = await _ensureAnonAuth();
-                    if (newUserId) {
-                        payload.user_id = newUserId;
-                        console.log('[spectator] Re-intentando upsert con nueva sesión...');
-                        var retryResult = await client.from('spectator_rooms').upsert(payload, { onConflict: 'room_code' });
-                        if (retryResult && retryResult.error) {
-                            console.error('[spectator] Re-intento de upsert falló también:', retryResult.error.message);
-                        } else {
-                            console.log('[spectator] Re-intento de upsert exitoso ✓');
-                        }
+                    payload.user_id = newUserId || null;
+                    console.log('[spectator] Re-intentando upsert con nueva sesión...');
+                    var retryResult = await client.from('spectator_rooms').upsert(payload, { onConflict: 'room_code' });
+                    if (retryResult && retryResult.error) {
+                        console.error('[spectator] Re-intento de upsert falló también:', retryResult.error.message);
+                    } else {
+                        console.log('[spectator] Re-intento de upsert exitoso ✓');
                     }
                 }
             }
@@ -201,10 +203,10 @@
 
         _currentRoomCode = decodeURIComponent(String(gameState.code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-        var userId = await _ensureAnonAuth();
-        if (!userId) {
-            _currentRoomCode = null;
-            return null;
+        try {
+            await _ensureAnonAuth();
+        } catch (e) {
+            console.warn('[spectator] Auth error during room creation:', e.message);
         }
 
         var minimal = _gameToMinimal(gameState);
@@ -232,10 +234,10 @@
         // Cerrar canal anterior si existe
         spectatorCloseRoom();
 
-        var userId = await _ensureAnonAuth();
-        if (!userId) {
-            _safeCallback(onUpdate, null, new Error('auth_failed'));
-            return false;
+        try {
+            await _ensureAnonAuth();
+        } catch (e) {
+            console.warn('[spectator] Auth error during subscription:', e.message);
         }
 
         _currentRoomCode = decodeURIComponent(String(code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');

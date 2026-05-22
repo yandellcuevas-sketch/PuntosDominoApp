@@ -1232,13 +1232,48 @@ function initEditModal() {
     });
 }
 
+function extractRoomCode(input) {
+    if (!input) return '';
+    input = String(input).trim();
+    const lowerInput = input.toLowerCase();
+    if (lowerInput.includes('code=')) {
+        try {
+            const match = input.match(/[?&]code=([^&]+)/i);
+            if (match && match[1]) {
+                return match[1];
+            }
+            const simpleMatch = input.match(/code=([^&]+)/i);
+            if (simpleMatch && simpleMatch[1]) {
+                return simpleMatch[1];
+            }
+        } catch (e) {
+            console.warn('[app] Error extracting code from URL:', e);
+        }
+    }
+    if (input.includes('://') || input.includes('/') || input.includes('.')) {
+        return '';
+    }
+    return input;
+}
+
+function normalizeRoomCode(code) {
+    if (!code) return '';
+    try {
+        code = decodeURIComponent(code);
+    } catch (e) {
+        // Ignore malformed URI error
+    }
+    return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
 function initJoinControls() {
     const btnJoin = $('btn-join');
     if (!btnJoin) return;
 
     btnJoin.addEventListener('click', async () => {
         const codeInput = $('join-code');
-        const code = codeInput.value.trim().toUpperCase();
+        const rawValue = codeInput.value;
+        const code = normalizeRoomCode(extractRoomCode(rawValue));
 
         if (!code) {
             showJoinError('Introduce un código de sala.');
@@ -1249,12 +1284,14 @@ function initJoinControls() {
 }
 
 // ─── Spectator Deep Linking & Join Flow ─────────────────────────
-async function joinSpectatorRoom(code) {
-    if (!code) return;
+async function joinSpectatorRoom(input) {
+    if (!input) return;
 
-    // Normalizar código: trim, uppercase, decodificar URI y remover caracteres no-alfanuméricos
-    code = decodeURIComponent(String(code)).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!code) return;
+    const code = normalizeRoomCode(extractRoomCode(input));
+    if (!code) {
+        showJoinError('Código de sala no válido.');
+        return;
+    }
 
     // 1. Mostrar de inmediato el modal de descarga en entorno web (si no fue descartado previamente)
     const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
@@ -1267,7 +1304,7 @@ async function joinSpectatorRoom(code) {
     }
 
     showScreen('screen-setup');
-    const btnJoin = $('btn-join-room');
+    const btnJoin = $('btn-join');
     if (btnJoin) btnJoin.scrollIntoView();
 
     showJoinError('');
@@ -1400,12 +1437,18 @@ window.leaveSpectatorMode = function leaveSpectatorMode() {
         var cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
         window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
     }
+
+    // Limpiar el estado de los controles de unirse
+    showJoinError('');
+    showJoinStatus('');
+    const codeInput = $('join-code');
+    if (codeInput) codeInput.value = '';
     
     hideFinishedSpectatorOverlay();
     showScreen('screen-setup');
 };
 
-function initDeepLinks() {
+async function initDeepLinks() {
     // 1. Web Fallback Check
     if (window.location.search) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -1415,16 +1458,34 @@ function initDeepLinks() {
         }
     }
 
-    // 2. Native Deep Link Listener
+    // 2. Native Deep Link Listener & Cold Start Check
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-        window.Capacitor.Plugins.App.addListener('appUrlOpen', data => {
-            if (data.url && data.url.includes('?code=')) {
-                const codeMatch = data.url.match(/code=([^&]+)/);
-                if (codeMatch && codeMatch[1]) {
-                    joinSpectatorRoom(codeMatch[1]);
+        const App = window.Capacitor.Plugins.App;
+
+        // Listener para deep links cuando la app ya está abierta en segundo plano
+        App.addListener('appUrlOpen', data => {
+            console.log('[app] appUrlOpen event:', data);
+            if (data && data.url) {
+                const code = extractRoomCode(data.url);
+                if (code) {
+                    joinSpectatorRoom(code);
                 }
             }
         });
+
+        // Chequear si la app fue lanzada mediante un deep link (Cold Start)
+        try {
+            const launchUrlData = await App.getLaunchUrl();
+            console.log('[app] getLaunchUrl result:', launchUrlData);
+            if (launchUrlData && launchUrlData.url) {
+                const code = extractRoomCode(launchUrlData.url);
+                if (code) {
+                    joinSpectatorRoom(code);
+                }
+            }
+        } catch (e) {
+            console.warn('[app] Error checking getLaunchUrl:', e);
+        }
     }
 }
 
