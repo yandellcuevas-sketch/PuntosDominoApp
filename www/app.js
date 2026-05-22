@@ -1247,6 +1247,16 @@ function initJoinControls() {
 async function joinSpectatorRoom(code) {
     if (!code) return;
 
+    // 1. Mostrar de inmediato el modal de descarga en entorno web (si no fue descartado previamente)
+    const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+    if (!isNative && !localStorage.getItem('downloadPromptDismissed')) {
+        const screenDownload = document.getElementById('screen-download');
+        if (screenDownload) {
+            screenDownload.classList.remove('hidden');
+            screenDownload.style.display = 'flex';
+        }
+    }
+
     showScreen('screen-setup');
     const btnJoin = $('btn-join-room');
     if (btnJoin) btnJoin.scrollIntoView();
@@ -1308,16 +1318,6 @@ async function joinSpectatorRoom(code) {
     if (!subscribed && !state.isSpectator) {
         showJoinStatus('');
         showJoinError('Modo espectador no disponible temporalmente. Verifica tu conexión.');
-    } else if (subscribed && state.isSpectator) {
-        // Check if running in a web browser context (not Capacitor Native)
-        const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-        if (!isNative && !window.downloadPromptDismissed) {
-            const screenDownload = document.getElementById('screen-download');
-            if (screenDownload) {
-                screenDownload.classList.remove('hidden');
-                screenDownload.style.display = 'flex';
-            }
-        }
     }
 }
 

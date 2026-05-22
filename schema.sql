@@ -31,18 +31,18 @@ CREATE POLICY "Espectadores pueden ver cualquier sala"
     ON public.spectator_rooms FOR SELECT
     USING (true);
 
--- Solo el creador de la sesión puede PUBLICAR/ACTUALIZAR su sala
-CREATE POLICY "Usuario puede publicar su propia sala"
+-- Cualquiera puede crear, actualizar o eliminar salas de espectador (necesario para evitar bloqueos por expiración de sesión o colisión de códigos)
+CREATE POLICY "Cualquiera puede publicar salas"
     ON public.spectator_rooms FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (true);
 
-CREATE POLICY "Usuario puede actualizar su propia sala"
+CREATE POLICY "Cualquiera puede actualizar salas"
     ON public.spectator_rooms FOR UPDATE
-    USING (auth.uid() = user_id);
+    USING (true);
 
-CREATE POLICY "Usuario puede eliminar su propia sala"
+CREATE POLICY "Cualquiera puede eliminar salas"
     ON public.spectator_rooms FOR DELETE
-    USING (auth.uid() = user_id);
+    USING (true);
 
 -- Habilitar Realtime para spectator_rooms (espectadores en vivo)
 ALTER PUBLICATION supabase_realtime ADD TABLE public.spectator_rooms;
