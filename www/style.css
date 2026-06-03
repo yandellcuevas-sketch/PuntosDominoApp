@@ -1680,4 +1680,253 @@ body {
     margin-bottom: 6px;
     text-align: center;
     animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ═══════════════ SCANNER ═══════════════ */
+
+/* Scan quick-action button */
+.qbtn-scan {
+    background: rgba(167, 139, 250, 0.07);
+    border-color: rgba(167, 139, 250, 0.35);
+    color: #a78bfa;
+    font-size: 0.9rem;
+    padding: 14px 24px;
+    box-shadow: 0 0 10px rgba(167, 139, 250, 0.1);
+    letter-spacing: 0.5px;
+    flex: 1;
+}
+.qbtn-scan:hover {
+    background: rgba(167, 139, 250, 0.15);
+    border-color: #a78bfa;
+    color: #c4b5fd;
+    box-shadow: 0 0 18px rgba(167, 139, 250, 0.25);
+}
+.qbtn-scan:active {
+    transform: scale(.95);
+}
+
+/* Scan modal */
+.scan-modal {
+    max-width: 440px;
+}
+.scan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.scan-header .modal-title {
+    margin-bottom: 0;
+}
+.scan-close-btn {
+    flex-shrink: 0;
+}
+.scan-state {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.scan-hint {
+    color: var(--text-sub);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    text-align: center;
+    padding: 8px 0;
+}
+.scan-capture-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Image preview */
+.scan-preview {
+    width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: var(--bg3);
+}
+.scan-preview.small {
+    max-height: 120px;
+}
+
+/* Spinner */
+.scan-spinner-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+}
+.scan-spinner {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid var(--bg3);
+    border-top-color: #a78bfa;
+    border-right-color: rgba(167, 139, 250, 0.4);
+    animation: scan-spin 0.9s linear infinite;
+}
+@keyframes scan-spin {
+    to { transform: rotate(360deg); }
+}
+.scan-analyzing-text {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    letter-spacing: 0.5px;
+    animation: scan-pulse-text 1.5s ease-in-out infinite;
+}
+@keyframes scan-pulse-text {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* Result card */
+.scan-result-card {
+    background: var(--bg3);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.scan-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.scan-fichas-count {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    font-weight: 600;
+}
+.scan-confidence {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+.conf-alta {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+.conf-media {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.conf-baja {
+    background: rgba(255, 107, 107, 0.12);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+/* Fichas list */
+.scan-fichas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.scan-ficha-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    transition: border-color .15s;
+}
+.scan-ficha-dots {
+    color: var(--text-sub);
+    letter-spacing: 1px;
+}
+.scan-ficha-val {
+    color: #a78bfa;
+    font-weight: 700;
+}
+.scan-empty {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    text-align: center;
+    padding: 8px 0;
+}
+.scan-notes {
+    color: var(--text-sub);
+    font-size: 0.78rem;
+    font-style: italic;
+    padding: 4px 0;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* Total row */
+.scan-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--glass-border);
+}
+.scan-total-label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+}
+.scan-total-input {
+    width: 90px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: #a78bfa;
+    padding: 6px 10px;
+}
+
+/* Result actions */
+.scan-result-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Error state */
+.scan-error-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    padding: 8px 0;
+}
+.scan-error-text {
+    color: var(--text-sub);
+    font-size: 0.9rem;
+    text-align: center;
+    line-height: 1.5;
+}
+.scan-error-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Feedback glow on manual-pts when filled by scanner */
+.scan-filled {
+    animation: scan-glow 1.5s ease-out;
+}
+@keyframes scan-glow {
+    0% {
+        border-color: #a78bfa;
+        box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.3);
+    }
+    100% {
+        border-color: var(--glass-border);
+        box-shadow: none;
+    }
 }
