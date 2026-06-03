@@ -18,45 +18,30 @@
     var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
     var MAX_IMAGE_SIZE = 1600; // px — máximo del lado más largo antes de enviar
 
-    var DOMINO_PROMPT = "You are an expert at counting domino tiles. Your task has TWO phases.\n\n" +
-
-    "PHASE 1 — INVENTORY (internal reasoning, do not output this):\n" +
-    "Scan the image in a strict grid pattern: row by row, left to right.\n" +
-    "For each tile found, do the following:\n" +
-    "  1. Locate the CENTER DIVIDING LINE that splits the tile into two halves.\n" +
-    "  2. Count ONLY the dots that are strictly on the LEFT or TOP side of that line. That is lado1.\n" +
-    "  3. Count ONLY the dots that are strictly on the RIGHT or BOTTOM side of that line. That is lado2.\n" +
-    "  4. NEVER count a dot that belongs to an adjacent tile.\n" +
-    "  5. If one half has no dots at all, it is 0. Do not guess or assume.\n" +
-    "  6. Double-check your dot count for each half before moving on.\n" +
-    "  7. Note the tile's position in the grid (e.g. 'row 1, col 2').\n\n" +
-
-    "CRITICAL RULES:\n" +
-    "- A blank half = 0. Never substitute 0 for another number.\n" +
-    "- Do NOT let dots from a neighboring tile bleed into your count.\n" +
-    "- Do NOT infer or guess a value. Only count clearly visible dots.\n" +
-    "- If you cannot confidently read both halves of a tile, skip it and set confianza to 'baja'.\n" +
-    "- Maximum dots per half: 6. Maximum value per tile: 12.\n\n" +
-
-    "PHASE 2 — OUTPUT:\n" +
-    "After completing your full inventory, output ONLY a JSON object. No markdown, no explanation, no code fences.\n" +
-    "{\n" +
-    '  "fichas": [\n' +
-    '    {"lado1": 3, "lado2": 5, "valor": 8, "posicion": "fila1-col2"}\n' +
-    "  ],\n" +
-    '  "total": 8,\n' +
-    '  "cantidad": 1,\n' +
-    '  "confianza": "alta",\n' +
-    '  "notas": "Scanned 3 rows x 3 cols. Found 1 tile."\n' +
-    "}\n\n" +
-
-    "Confidence levels:\n" +
-    "- 'alta': every tile clearly visible, dot counts are certain\n" +
-    "- 'media': one or two tiles partially obscured but readable\n" +
-    "- 'baja': blurry image, poor lighting, or multiple tiles unreadable\n\n" +
-
-    "If no domino tiles are found in the image, return:\n" +
-    '{"fichas": [], "total": 0, "cantidad": 0, "confianza": "baja", "notas": "No tiles found"}';
+    var DOMINO_PROMPT = "You are a specialized vision system for counting domino tile pips.\n\n" +
+    "TILE IDENTIFICATION:\n" +
+    "- Domino tiles are rectangular pieces divided by a CENTER LINE into two halves\n" +
+    "- Tiles can be ANY color: white, cream, black, brown, colored\n" +
+    "- Dots (pips) can be darker OR lighter than the tile surface\n" +
+    "- Tiles may be at ANY angle. Identify the center line regardless of rotation\n" +
+    "- Only count FACE-UP tiles. Skip face-down tiles completely\n\n" +
+    "PHASE 1 \u2014 INVENTORY (do not output):\n" +
+    "For each tile:\n" +
+    "  1. Find the CENTER LINE dividing the two halves\n" +
+    "  2. Count ONLY circular pip shapes on the LEFT/TOP half \u2192 lado1 (0\u20136)\n" +
+    "  3. Count ONLY circular pip shapes on the RIGHT/BOTTOM half \u2192 lado2 (0\u20136)\n" +
+    "  4. Never count pips from adjacent tiles\n" +
+    "  5. Blank half = exactly 0, never ambiguous\n" +
+    "  6. Double-check each half before moving on\n\n" +
+    "CRITICAL:\n" +
+    "- Pips are always circular. Reflections and glare are NOT pips\n" +
+    "- Maximum 6 pips per half. If you count more than 6, recount\n" +
+    "- Partially visible tile: include ONLY if both halves are readable\n" +
+    "- Background objects are NOT tiles\n\n" +
+    "PHASE 2 \u2014 OUTPUT (valid JSON only, no markdown):\n" +
+    '{"fichas":[{"lado1":3,"lado2":5,"valor":8}],"total":8,"cantidad":1,"confianza":"alta","notas":""}\n\n' +
+    "confianza: alta=all clear | media=some obscured | baja=blurry/uncertain\n" +
+    'No tiles: {"fichas":[],"total":0,"cantidad":0,"confianza":"baja","notas":"No tiles found"}';
 
     // ── Referencias DOM (cacheadas en init) ──────────────────────────
     var _modal = null;
@@ -332,13 +317,8 @@
     //  LLAMADA A GEMINI VISION API (Directa)
     // ═════════════════════════════════════════════════════════════════
 
-    function _buildVerifyPrompt(prevResult) {
-        return "You previously counted " + prevResult.cantidad + " domino tiles with a total of " +
-            prevResult.total + " points.\n" +
-            "Please re-examine this image carefully and verify that count.\n" +
-            "Pay special attention to tiles that may have been missed at the edges.\n" +
-            "Tiles found previously: " + JSON.stringify(prevResult.fichas) + "\n\n" +
-            "Respond ONLY with the same JSON format as before.";
+    function _buildVerifyPrompt() {
+        return DOMINO_PROMPT + "\n\nNOTE: Be especially thorough \u2014 this image may contain tiles that are easy to overlook near the edges or partially hidden.";
     }
 
     async function _callGemini(base64, mimeType, promptText) {
@@ -416,9 +396,15 @@
             throw new Error('Respuesta inesperada del servidor.');
         }
 
-        // Recalcular total y cantidad por seguridad
+        // Recalcular y validar cada ficha
+        data.fichas = data.fichas.filter(function(f) {
+            return typeof f.lado1 === 'number' && typeof f.lado2 === 'number' &&
+                   f.lado1 >= 0 && f.lado1 <= 6 &&
+                   f.lado2 >= 0 && f.lado2 <= 6;
+        });
+        data.fichas.forEach(function(f) { f.valor = f.lado1 + f.lado2; });
         data.cantidad = data.fichas.length;
-        data.total = data.fichas.reduce(function (sum, f) { return sum + (f.valor || 0); }, 0);
+        data.total = data.fichas.reduce(function(sum, f) { return sum + f.valor; }, 0);
 
         return data;
     }
@@ -428,16 +414,15 @@
         
         if (firstPass.confianza !== 'alta') {
             try {
-                var verifyPrompt = _buildVerifyPrompt(firstPass);
+                var verifyPrompt = _buildVerifyPrompt();
                 var secondPass = await _callGemini(base64, mimeType, verifyPrompt);
                 
-                var getScore = function(c) {
-                    if (c === 'alta') return 3;
-                    if (c === 'media') return 2;
-                    return 1; // baja o undefined
+                var getScore = function(r) {
+                    var c = r.confianza === 'alta' ? 3 : r.confianza === 'media' ? 2 : 1;
+                    return c * 1000 + r.cantidad;
                 };
                 
-                if (getScore(secondPass.confianza) >= getScore(firstPass.confianza)) {
+                if (getScore(secondPass) >= getScore(firstPass)) {
                     return secondPass;
                 }
             } catch (e) {
