@@ -19,24 +19,44 @@
     var MAX_IMAGE_SIZE = 1600; // px — máximo del lado más largo antes de enviar
 
     var DOMINO_PROMPT = "You are an expert at counting domino tiles. Your task has TWO phases.\n\n" +
-        "PHASE 1 — INVENTORY (internal reasoning):\n" +
-        "Scan the image in a strict grid pattern: row by row, left to right.\n" +
-        "For each tile found, note its position (e.g. 'row 1, col 2') and both pip values.\n" +
-        "A domino tile is a rectangular piece divided in two halves by a line.\n" +
-        "Count the dots on each half carefully. A blank half = 0.\n\n" +
-        "PHASE 2 — OUTPUT:\n" +
-        "After your inventory, output ONLY a JSON object. No markdown, no explanation.\n" +
-        "{\n" +
-        '  "fichas": [\n' +
-        '    {"lado1": 3, "lado2": 5, "valor": 8, "posicion": "fila1-col2"}\n' +
-        "  ],\n" +
-        '  "total": 8,\n' +
-        '  "cantidad": 1,\n' +
-        '  "confianza": "alta",\n' +
-        '  "notas": "Scanned 3 rows x 3 cols. Found 1 tile."\n' +
-        "}\n\n" +
-        "Confidence: alta=all tiles clear | media=some obscured | baja=blurry/poor light\n" +
-        'If no tiles found: {"fichas":[], "total":0, "cantidad":0, "confianza":"baja", "notas":"No tiles found"}';
+
+    "PHASE 1 — INVENTORY (internal reasoning, do not output this):\n" +
+    "Scan the image in a strict grid pattern: row by row, left to right.\n" +
+    "For each tile found, do the following:\n" +
+    "  1. Locate the CENTER DIVIDING LINE that splits the tile into two halves.\n" +
+    "  2. Count ONLY the dots that are strictly on the LEFT or TOP side of that line. That is lado1.\n" +
+    "  3. Count ONLY the dots that are strictly on the RIGHT or BOTTOM side of that line. That is lado2.\n" +
+    "  4. NEVER count a dot that belongs to an adjacent tile.\n" +
+    "  5. If one half has no dots at all, it is 0. Do not guess or assume.\n" +
+    "  6. Double-check your dot count for each half before moving on.\n" +
+    "  7. Note the tile's position in the grid (e.g. 'row 1, col 2').\n\n" +
+
+    "CRITICAL RULES:\n" +
+    "- A blank half = 0. Never substitute 0 for another number.\n" +
+    "- Do NOT let dots from a neighboring tile bleed into your count.\n" +
+    "- Do NOT infer or guess a value. Only count clearly visible dots.\n" +
+    "- If you cannot confidently read both halves of a tile, skip it and set confianza to 'baja'.\n" +
+    "- Maximum dots per half: 6. Maximum value per tile: 12.\n\n" +
+
+    "PHASE 2 — OUTPUT:\n" +
+    "After completing your full inventory, output ONLY a JSON object. No markdown, no explanation, no code fences.\n" +
+    "{\n" +
+    '  "fichas": [\n' +
+    '    {"lado1": 3, "lado2": 5, "valor": 8, "posicion": "fila1-col2"}\n' +
+    "  ],\n" +
+    '  "total": 8,\n' +
+    '  "cantidad": 1,\n' +
+    '  "confianza": "alta",\n' +
+    '  "notas": "Scanned 3 rows x 3 cols. Found 1 tile."\n' +
+    "}\n\n" +
+
+    "Confidence levels:\n" +
+    "- 'alta': every tile clearly visible, dot counts are certain\n" +
+    "- 'media': one or two tiles partially obscured but readable\n" +
+    "- 'baja': blurry image, poor lighting, or multiple tiles unreadable\n\n" +
+
+    "If no domino tiles are found in the image, return:\n" +
+    '{"fichas": [], "total": 0, "cantidad": 0, "confianza": "baja", "notas": "No tiles found"}';
 
     // ── Referencias DOM (cacheadas en init) ──────────────────────────
     var _modal = null;
