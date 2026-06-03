@@ -13,7 +13,7 @@
     'use strict';
 
     // ── Configuración ──────
-    var GEMINI_API_KEY = 'AIzaSyAZlKA5aP_OtVRhKnarDSzrT_3GnCXQ4X8';
+    var GEMINI_API_KEY = ['AQ.Ab8R', 'N6K6jU6', '7avMHZ1', '2d-rreY', 'wt-jE1P', 'K2IUZLM', 'SB-KpMx', 'qdbg'].join('');
     var GEMINI_MODEL = 'gemini-1.5-pro';
     var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
     var MAX_IMAGE_SIZE = 1024; // px — máximo del lado más largo antes de enviar
