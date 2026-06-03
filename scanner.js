@@ -16,34 +16,27 @@
     var GEMINI_API_KEY = ['AQ.Ab8R', 'N6K6jU6', '7avMHZ1', '2d-rreY', 'wt-jE1P', 'K2IUZLM', 'SB-KpMx', 'qdbg'].join('');
     var GEMINI_MODEL = 'gemini-2.5-flash';
     var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
-    var MAX_IMAGE_SIZE = 1024; // px — máximo del lado más largo antes de enviar
+    var MAX_IMAGE_SIZE = 1600; // px — máximo del lado más largo antes de enviar
 
-    var DOMINO_PROMPT = "You are an expert at recognizing dominó (domino) tiles in photographs.\n\n" +
-        "Analyze this image of domino tiles placed face-up on a table. Scan the image methodically from top to bottom, left to right.\n" +
-        "For each visible tile, identify the two numbers (pips) on each half (0 to 6).\n" +
-        "The value of a tile is the SUM of both halves.\n\n" +
-        "Rules for counting:\n" +
-        "- Be extremely precise. Double check your count for each tile.\n" +
-        "- A blank half = 0. Double tiles (same number on both halves) are valid (e.g., 3|3 = 6)\n" +
-        "- Only count clearly visible tiles — skip any that are face-down, cut off, or completely unreadable\n" +
-        "- If a tile is partially obscured but you can still confidently read both halves, include it\n" +
-        "- Maximum possible value per tile is 12 (double-six: 6|6)\n\n" +
-        "Respond ONLY with valid JSON. No markdown, no explanation, no code fences.\n" +
-        "Use this exact format:\n" +
+    var DOMINO_PROMPT = "You are an expert at counting domino tiles. Your task has TWO phases.\n\n" +
+        "PHASE 1 — INVENTORY (internal reasoning):\n" +
+        "Scan the image in a strict grid pattern: row by row, left to right.\n" +
+        "For each tile found, note its position (e.g. 'row 1, col 2') and both pip values.\n" +
+        "A domino tile is a rectangular piece divided in two halves by a line.\n" +
+        "Count the dots on each half carefully. A blank half = 0.\n\n" +
+        "PHASE 2 — OUTPUT:\n" +
+        "After your inventory, output ONLY a JSON object. No markdown, no explanation.\n" +
         "{\n" +
         '  "fichas": [\n' +
-        '    {"lado1": 3, "lado2": 5, "valor": 8},\n' +
-        '    {"lado1": 0, "lado2": 2, "valor": 2}\n' +
+        '    {"lado1": 3, "lado2": 5, "valor": 8, "posicion": "fila1-col2"}\n' +
         "  ],\n" +
-        '  "total": 10,\n' +
-        '  "cantidad": 2,\n' +
+        '  "total": 8,\n' +
+        '  "cantidad": 1,\n' +
         '  "confianza": "alta",\n' +
-        '  "notas": "I have methodically scanned the image and counted 2 tiles."\n' +
+        '  "notas": "Scanned 3 rows x 3 cols. Found 1 tile."\n' +
         "}\n\n" +
-        "Confidence levels:\n" +
-        '- "baja": many tiles hard to read, blurry, or poor conditions\n\n' +
-        "If no domino tiles are found in the image, return:\n" +
-        '{"fichas": [], "total": 0, "cantidad": 0, "confianza": "baja", "notas": "No se detectaron fichas de dominó en la imagen"}';
+        "Confidence: alta=all tiles clear | media=some obscured | baja=blurry/poor light\n" +
+        'If no tiles found: {"fichas":[], "total":0, "cantidad":0, "confianza":"baja", "notas":"No tiles found"}';
 
     // ── Referencias DOM (cacheadas en init) ──────────────────────────
     var _modal = null;
@@ -273,7 +266,16 @@
     //  LLAMADA A GEMINI VISION API (Directa)
     // ═════════════════════════════════════════════════════════════════
 
-    async function _analyze(base64, mimeType) {
+    function _buildVerifyPrompt(prevResult) {
+        return "You previously counted " + prevResult.cantidad + " domino tiles with a total of " +
+            prevResult.total + " points.\n" +
+            "Please re-examine this image carefully and verify that count.\n" +
+            "Pay special attention to tiles that may have been missed at the edges.\n" +
+            "Tiles found previously: " + JSON.stringify(prevResult.fichas) + "\n\n" +
+            "Respond ONLY with the same JSON format as before.";
+    }
+
+    async function _callGemini(base64, mimeType, promptText) {
         // Verificar conexión
         if (!navigator.onLine) {
             throw new Error('Sin conexión a internet. El escaneo requiere conexión.');
@@ -294,13 +296,16 @@
                                     data: base64,
                                 },
                             },
-                            { text: DOMINO_PROMPT },
+                            { text: promptText },
                         ],
                     }],
                     generationConfig: {
-                        temperature: 0.1,
-                        maxOutputTokens: 2048,
+                        temperature: 0,
+                        maxOutputTokens: 4096,
                     },
+                    thinkingConfig: {
+                        thinkingBudget: 1024
+                    }
                 }),
             }),
             new Promise(function (_, reject) {
@@ -353,6 +358,32 @@
         data.total = data.fichas.reduce(function (sum, f) { return sum + (f.valor || 0); }, 0);
 
         return data;
+    }
+
+    async function _analyze(base64, mimeType) {
+        var firstPass = await _callGemini(base64, mimeType, DOMINO_PROMPT);
+        
+        if (firstPass.confianza !== 'alta') {
+            try {
+                var verifyPrompt = _buildVerifyPrompt(firstPass);
+                var secondPass = await _callGemini(base64, mimeType, verifyPrompt);
+                
+                var getScore = function(c) {
+                    if (c === 'alta') return 3;
+                    if (c === 'media') return 2;
+                    return 1; // baja o undefined
+                };
+                
+                if (getScore(secondPass.confianza) >= getScore(firstPass.confianza)) {
+                    return secondPass;
+                }
+            } catch (e) {
+                // Si falla el segundo pase, ignoramos y devolvemos el primero
+                console.warn('[scanner] Segundo pase falló, devolviendo el primer pase', e);
+            }
+        }
+        
+        return firstPass;
     }
 
     // ═════════════════════════════════════════════════════════════════
