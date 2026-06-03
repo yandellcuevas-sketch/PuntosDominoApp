@@ -14,7 +14,7 @@
 
     // ── Configuración ──────
     var GEMINI_API_KEY = ['AQ.Ab8R', 'N6K6jU6', '7avMHZ1', '2d-rreY', 'wt-jE1P', 'K2IUZLM', 'SB-KpMx', 'qdbg'].join('');
-    var GEMINI_MODEL = 'gemini-2.5-flash';
+    var GEMINI_MODEL = 'gemini-2.0-flash';
     var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
     var MAX_IMAGE_SIZE = 1600; // px — máximo del lado más largo antes de enviar
 
@@ -411,26 +411,6 @@
 
     async function _analyze(base64, mimeType) {
         var firstPass = await _callGemini(base64, mimeType, DOMINO_PROMPT);
-        
-        if (firstPass.confianza !== 'alta') {
-            try {
-                var verifyPrompt = _buildVerifyPrompt();
-                var secondPass = await _callGemini(base64, mimeType, verifyPrompt);
-                
-                var getScore = function(r) {
-                    var c = r.confianza === 'alta' ? 3 : r.confianza === 'media' ? 2 : 1;
-                    return c * 1000 + r.cantidad;
-                };
-                
-                if (getScore(secondPass) >= getScore(firstPass)) {
-                    return secondPass;
-                }
-            } catch (e) {
-                // Si falla el segundo pase, ignoramos y devolvemos el primero
-                console.warn('[scanner] Segundo pase falló, devolviendo el primer pase', e);
-            }
-        }
-        
         return firstPass;
     }
 
