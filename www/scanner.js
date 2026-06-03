@@ -302,9 +302,6 @@
                     generationConfig: {
                         temperature: 0,
                         maxOutputTokens: 4096,
-                    },
-                    thinkingConfig: {
-                        thinkingBudget: 1024
                     }
                 }),
             }),
