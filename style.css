@@ -1929,4 +1929,54 @@ body {
         border-color: var(--glass-border);
         box-shadow: none;
     }
+}
+
+/* ── Scanner Tips State ─────────────────────────────────────── */
+.scan-tips-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+}
+.scan-tips-title {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #a78bfa;
+  margin-bottom: 1rem;
+}
+.scan-tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.scan-tips-list li {
+  font-size: 0.95rem;
+  color: var(--text-primary, #f1f5f9);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+}
+.scan-tips-check {
+  color: #4ade80;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.scan-tips-skip-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 1.2rem;
+  cursor: pointer;
+}
+.scan-tips-skip-label input[type="checkbox"] {
+  accent-color: #a78bfa;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
