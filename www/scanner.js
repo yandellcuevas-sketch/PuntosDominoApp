@@ -360,7 +360,7 @@
         if (!response.ok) {
             var errBody = null;
             try { errBody = await response.json(); } catch (e) { /* ignore */ }
-            var errMsg = (errBody && errBody.error && errBody.error.message) || 'Error del servidor (' + response.status + ')';
+            var errMsg = JSON.stringify(errBody) || 'Error del servidor (' + response.status + ')';
             throw new Error(errMsg);
         }
 
