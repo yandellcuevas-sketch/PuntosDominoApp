@@ -14,7 +14,7 @@
 
     // ── Configuración ──────
     var GEMINI_API_KEY = 'AIzaSyAZlKA5aP_OtVRhKnarDSzrT_3GnCXQ4X8';
-    var GEMINI_MODEL = 'gemini-1.5-flash';
+    var GEMINI_MODEL = 'gemini-1.5-flash-8b';
     var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
     var MAX_IMAGE_SIZE = 1024; // px — máximo del lado más largo antes de enviar
 
@@ -74,38 +74,38 @@
     }
 
     function _cacheDOM() {
-        _modal         = document.getElementById('modal-scan');
-        _states.idle      = document.getElementById('scan-state-idle');
+        _modal = document.getElementById('modal-scan');
+        _states.idle = document.getElementById('scan-state-idle');
         _states.analyzing = document.getElementById('scan-state-analyzing');
-        _states.result    = document.getElementById('scan-state-result');
-        _states.error     = document.getElementById('scan-state-error');
-        _previewImg    = document.getElementById('scan-preview');
+        _states.result = document.getElementById('scan-state-result');
+        _states.error = document.getElementById('scan-state-error');
+        _previewImg = document.getElementById('scan-preview');
         _previewResult = document.getElementById('scan-preview-result');
-        _fichasCount   = document.getElementById('scan-fichas-count');
-        _fichasList    = document.getElementById('scan-fichas-list');
-        _totalInput    = document.getElementById('scan-total-pts');
-        _confidence    = document.getElementById('scan-confidence');
-        _errorMsg      = document.getElementById('scan-error-msg');
-        _scanNotes     = document.getElementById('scan-notes');
+        _fichasCount = document.getElementById('scan-fichas-count');
+        _fichasList = document.getElementById('scan-fichas-list');
+        _totalInput = document.getElementById('scan-total-pts');
+        _confidence = document.getElementById('scan-confidence');
+        _errorMsg = document.getElementById('scan-error-msg');
+        _scanNotes = document.getElementById('scan-notes');
     }
 
     function _bindEvents() {
-        var btnCamera  = document.getElementById('scan-btn-camera');
+        var btnCamera = document.getElementById('scan-btn-camera');
         var btnGallery = document.getElementById('scan-btn-gallery');
-        var btnRetake  = document.getElementById('scan-btn-retake');
+        var btnRetake = document.getElementById('scan-btn-retake');
         var btnConfirm = document.getElementById('scan-btn-confirm');
-        var btnClose   = document.getElementById('scan-btn-close');
-        var btnManual  = document.getElementById('scan-btn-manual');
-        var btnRetry   = document.getElementById('scan-btn-retry');
+        var btnClose = document.getElementById('scan-btn-close');
+        var btnManual = document.getElementById('scan-btn-manual');
+        var btnRetry = document.getElementById('scan-btn-retry');
         var btnErrManual = document.getElementById('scan-btn-error-manual');
 
-        if (btnCamera)   btnCamera.addEventListener('click', function () { _capture('CAMERA'); });
-        if (btnGallery)  btnGallery.addEventListener('click', function () { _capture('PHOTOS'); });
-        if (btnRetake)   btnRetake.addEventListener('click', function () { _showState('idle'); });
-        if (btnConfirm)  btnConfirm.addEventListener('click', _confirm);
-        if (btnClose)    btnClose.addEventListener('click', close);
-        if (btnManual)   btnManual.addEventListener('click', _closeAndFocusManual);
-        if (btnRetry)    btnRetry.addEventListener('click', function () { _showState('idle'); });
+        if (btnCamera) btnCamera.addEventListener('click', function () { _capture('CAMERA'); });
+        if (btnGallery) btnGallery.addEventListener('click', function () { _capture('PHOTOS'); });
+        if (btnRetake) btnRetake.addEventListener('click', function () { _showState('idle'); });
+        if (btnConfirm) btnConfirm.addEventListener('click', _confirm);
+        if (btnClose) btnClose.addEventListener('click', close);
+        if (btnManual) btnManual.addEventListener('click', _closeAndFocusManual);
+        if (btnRetry) btnRetry.addEventListener('click', function () { _showState('idle'); });
         if (btnErrManual) btnErrManual.addEventListener('click', _closeAndFocusManual);
 
         // Cerrar modal al hacer click fuera de la card
@@ -322,11 +322,11 @@
         var geminiData = await response.json();
 
         var rawText = geminiData && geminiData.candidates && geminiData.candidates[0] && geminiData.candidates[0].content && geminiData.candidates[0].content.parts && geminiData.candidates[0].content.parts[0] && geminiData.candidates[0].content.parts[0].text;
-        
+
         if (!rawText) {
             throw new Error('La IA no pudo analizar la imagen. Intenta con otra foto.');
         }
-        
+
         var jsonStr = rawText;
         var fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (fenceMatch) {
@@ -341,7 +341,7 @@
         var data;
         try {
             data = JSON.parse(jsonObjMatch[0]);
-        } catch(e) {
+        } catch (e) {
             throw new Error('No se pudieron interpretar los resultados. Intenta con una foto más clara.');
         }
 
@@ -352,7 +352,7 @@
 
         // Recalcular total y cantidad por seguridad
         data.cantidad = data.fichas.length;
-        data.total = data.fichas.reduce(function(sum, f) { return sum + (f.valor || 0); }, 0);
+        data.total = data.fichas.reduce(function (sum, f) { return sum + (f.valor || 0); }, 0);
 
         return data;
     }
