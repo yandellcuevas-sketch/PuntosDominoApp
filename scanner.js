@@ -191,7 +191,8 @@
             if (_previewResult) _previewResult.src = _lastImageSrc;
 
             // Redimensionar antes de enviar (reduce ancho de banda)
-            var resized = await _resizeImage(imageData.base64, imageData.mimeType, MAX_IMAGE_SIZE);
+            var fixed = await _fixOrientation(imageData.base64, imageData.mimeType);
+            var resized = await _resizeImage(fixed.base64, fixed.mimeType, MAX_IMAGE_SIZE);
 
             // Analizar con IA
             _showState('analyzing');
@@ -251,6 +252,28 @@
     // ═════════════════════════════════════════════════════════════════
     //  REDIMENSIONAR IMAGEN (client-side, reduce bandwidth)
     // ═════════════════════════════════════════════════════════════════
+
+    function _fixOrientation(base64, mimeType) {
+        return new Promise(function (resolve) {
+            var img = new Image();
+            img.onload = function () {
+                var canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                var fixed = canvas.toDataURL(mimeType || 'image/jpeg', 0.95);
+                resolve({
+                    base64: fixed.split(',')[1],
+                    mimeType: mimeType || 'image/jpeg'
+                });
+            };
+            img.onerror = function () {
+                resolve({ base64: base64, mimeType: mimeType });
+            };
+            img.src = 'data:' + (mimeType || 'image/jpeg') + ';base64,' + base64;
+        });
+    }
 
     function _resizeImage(base64, mimeType, maxSize) {
         return new Promise(function (resolve) {
