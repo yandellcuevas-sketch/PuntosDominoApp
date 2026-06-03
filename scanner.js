@@ -146,11 +146,16 @@
     // ═════════════════════════════════════════════════════════════════
 
     function open() {
+        // FUNCIÓN DESHABILITADA TEMPORALMENTE
+        // Para reactivar, descomentar el código de abajo
+        /*
         if (!_modal) return;
         _lastResult = null;
         _lastImageSrc = null;
+        _pendingSource = null;
         _showState('idle');
         _modal.classList.remove('hidden');
+        */
     }
 
     function close() {
