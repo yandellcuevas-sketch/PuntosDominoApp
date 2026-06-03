@@ -1574,6 +1574,7 @@ function init() {
     initConfirmModal();
     initEditModal();
     initProfileModal();
+    initScannerButton();
     updateSoundIcons();
     updateProfileUI();
 
@@ -1692,4 +1693,18 @@ function updateProfileUI() {
             t1p1.value = state.profile.username;
         }
     }
+}
+
+// ─── Scanner Button ───────────────────────────────────────────────
+function initScannerButton() {
+    var btn = $('btn-scan-tiles');
+    if (!btn || typeof window.DominoScanner === 'undefined') return;
+
+    window.DominoScanner.init();
+
+    btn.addEventListener('click', function () {
+        if (!state.game || state.game.status !== 'active') return;
+        if (state.isSpectator) return;
+        window.DominoScanner.open();
+    });
 }
