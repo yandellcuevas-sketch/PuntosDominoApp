@@ -15,7 +15,7 @@
     // ── Configuración ──────
     var GEMINI_API_KEY = ['AQ.Ab8R', 'N6K6jU6', '7avMHZ1', '2d-rreY', 'wt-jE1P', 'K2IUZLM', 'SB-KpMx', 'qdbg'].join('');
     var GEMINI_MODEL = 'gemini-3.5-flash';
-    var GEMINI_URL = 'https://generativeai.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
+    var GEMINI_URL = 'https://script.google.com/macros/s/AKfycbwST4qZZJ6_6VgiwloC5ZdY7Itlaqe3qpEa-km7xXoClGCPaxzpON90Kjm8DvwyJInYMQ/exec';
     var MAX_IMAGE_SIZE = 1600; // px — máximo del lado más largo antes de enviar
 
     var DOMINO_PROMPT = "You are a specialized vision system for counting domino tile pips.\n\n" +
@@ -328,34 +328,27 @@
         }
 
         var response = await Promise.race([
-            fetch(GEMINI_URL + '?key=' + GEMINI_API_KEY, {
+            fetch(GEMINI_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{
                         parts: [
-                            {
-                                inlineData: {
-                                    mimeType: mimeType || 'image/jpeg',
-                                    data: base64,
-                                },
-                            },
-                            { text: promptText },
-                        ],
+                            { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } },
+                            { text: promptText }
+                        ]
                     }],
                     generationConfig: {
                         temperature: 0,
-                        maxOutputTokens: 4096,
+                        maxOutputTokens: 4096
                     }
-                }),
+                })
             }),
-            new Promise(function (_, reject) {
-                setTimeout(function () {
+            new Promise(function(_, reject) {
+                setTimeout(function() {
                     reject(new Error('Tiempo de espera agotado. Intenta de nuevo.'));
-                }, 30000); // 30s timeout
-            }),
+                }, 30000);
+            })
         ]);
 
         if (!response.ok) {
