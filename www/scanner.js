@@ -21,27 +21,28 @@
     var DOMINO_PROMPT = "You are a specialized vision system for counting domino tile pips.\n\n" +
     "TILE IDENTIFICATION:\n" +
     "- Domino tiles are rectangular pieces divided by a CENTER LINE into two halves\n" +
-    "- Tiles can be ANY color: white, cream, black, brown, colored\n" +
-    "- Dots (pips) can be darker OR lighter than the tile surface\n" +
-    "- Tiles may be at ANY angle. Identify the center line regardless of rotation\n" +
-    "- Only count FACE-UP tiles. Skip face-down tiles completely\n\n" +
-    "PHASE 1 \u2014 INVENTORY (do not output):\n" +
+    "- Tiles can be ANY color. Dots can be darker OR lighter than the tile surface\n" +
+    "- Tiles may be at ANY angle. Only count FACE-UP tiles\n\n" +
+    "PHASE 1 — INVENTORY (do not output):\n" +
     "For each tile:\n" +
     "  1. Find the CENTER LINE dividing the two halves\n" +
-    "  2. Count ONLY circular pip shapes on the LEFT/TOP half \u2192 lado1 (0\u20136)\n" +
-    "  3. Count ONLY circular pip shapes on the RIGHT/BOTTOM half \u2192 lado2 (0\u20136)\n" +
-    "  4. Never count pips from adjacent tiles\n" +
-    "  5. Blank half = exactly 0, never ambiguous\n" +
-    "  6. Double-check each half before moving on\n\n" +
-    "CRITICAL:\n" +
-    "- Pips are always circular. Reflections and glare are NOT pips\n" +
-    "- Maximum 6 pips per half. If you count more than 6, recount\n" +
-    "- Partially visible tile: include ONLY if both halves are readable\n" +
-    "- Background objects are NOT tiles\n\n" +
-    "PHASE 2 \u2014 OUTPUT (valid JSON only, no markdown):\n" +
-    '{"fichas":[{"lado1":3,"lado2":5,"valor":8}],"total":8,"cantidad":1,"confianza":"alta","notas":""}\n\n' +
+    "  2. Count ONLY circular pip shapes on each half strictly (0–6 max)\n" +
+    "  3. DOUBLE tiles: both halves have IDENTICAL counts — verify both sides match\n" +
+    "  4. ZERO half: if you see NO dots at all, it is 0. Empty space is NOT a dot\n" +
+    "  5. Never count pips from adjacent tiles or background objects\n" +
+    "  6. After counting, ask yourself: could this be a double (same number both sides)?\n" +
+    "  7. After counting, ask yourself: could one side actually be zero (completely empty)?\n\n" +
+    "CRITICAL RULES:\n" +
+    "- Pips are solid circular shapes. Reflections, grain, shadows are NOT pips\n" +
+    "- A half with no circular shapes = 0, always\n" +
+    "- Maximum 6 pips per half. If you count more than 6, recount carefully\n" +
+    "- Doubles (0|0, 1|1, 2|2, 3|3, 4|4, 5|5, 6|6) are common — do not assume both sides differ\n" +
+    "- Partially visible tile: include ONLY if both halves are fully readable\n" +
+    "- Background objects (cups, hands, papers, cards) are NOT tiles\n\n" +
+    "PHASE 2 — OUTPUT (valid JSON only, no markdown):\n" +
+    "{\"fichas\":[{\"lado1\":6,\"lado2\":6,\"valor\":12}],\"total\":12,\"cantidad\":1,\"confianza\":\"alta\",\"notas\":\"\"}\n\n" +
     "confianza: alta=all clear | media=some obscured | baja=blurry/uncertain\n" +
-    'No tiles: {"fichas":[],"total":0,"cantidad":0,"confianza":"baja","notas":"No tiles found"}';
+    "No tiles: {\"fichas\":[],\"total\":0,\"cantidad\":0,\"confianza\":\"baja\",\"notas\":\"No tiles found\"}";
 
     // ── Referencias DOM (cacheadas en init) ──────────────────────────
     var _modal = null;
