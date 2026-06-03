@@ -13,20 +13,20 @@
     'use strict';
 
     // ── Configuración ──────
-    var GEMINI_API_KEY = ['AQ.Ab8R', 'N6LuI9', 'fzKSl-ZsN', '8RfW5F', 'ekfc49q', '6P0bxhSpS', 'vwdKhf-cw'].join('');
-    var GEMINI_MODEL = 'gemini-2.5-flash';
+    var GEMINI_API_KEY = 'AIzaSyAZlKA5aP_OtVRhKnarDSzrT_3GnCXQ4X8';
+    var GEMINI_MODEL = 'gemini-1.5-pro';
     var GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent';
     var MAX_IMAGE_SIZE = 1024; // px — máximo del lado más largo antes de enviar
 
     var DOMINO_PROMPT = "You are an expert at recognizing dominó (domino) tiles in photographs.\n\n" +
-        "Analyze this image of domino tiles placed face-up on a table.\n" +
+        "Analyze this image of domino tiles placed face-up on a table. Scan the image methodically from top to bottom, left to right.\n" +
         "For each visible tile, identify the two numbers (pips) on each half (0 to 6).\n" +
         "The value of a tile is the SUM of both halves.\n\n" +
-        "Rules:\n" +
-        "- A blank half = 0\n" +
-        "- Double tiles (same number on both halves) are valid (e.g., 3|3 = 6)\n" +
-        "- Only count clearly visible tiles — skip any that are face-down, cut off, or unreadable\n" +
-        "- If a tile is partially obscured but you can still read both halves, include it\n" +
+        "Rules for counting:\n" +
+        "- Be extremely precise. Double check your count for each tile.\n" +
+        "- A blank half = 0. Double tiles (same number on both halves) are valid (e.g., 3|3 = 6)\n" +
+        "- Only count clearly visible tiles — skip any that are face-down, cut off, or completely unreadable\n" +
+        "- If a tile is partially obscured but you can still confidently read both halves, include it\n" +
         "- Maximum possible value per tile is 12 (double-six: 6|6)\n\n" +
         "Respond ONLY with valid JSON. No markdown, no explanation, no code fences.\n" +
         "Use this exact format:\n" +
@@ -38,11 +38,9 @@
         '  "total": 10,\n' +
         '  "cantidad": 2,\n' +
         '  "confianza": "alta",\n' +
-        '  "notas": ""\n' +
+        '  "notas": "I have methodically scanned the image and counted 2 tiles."\n' +
         "}\n\n" +
         "Confidence levels:\n" +
-        '- "alta": all tiles clearly visible, good lighting\n' +
-        '- "media": some tiles partially obscured or lighting is uneven\n' +
         '- "baja": many tiles hard to read, blurry, or poor conditions\n\n' +
         "If no domino tiles are found in the image, return:\n" +
         '{"fichas": [], "total": 0, "cantidad": 0, "confianza": "baja", "notas": "No se detectaron fichas de dominó en la imagen"}';
