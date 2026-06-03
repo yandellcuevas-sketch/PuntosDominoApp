@@ -73,6 +73,7 @@
     // ── Estado interno ───────────────────────────────────────────────
     var _lastResult = null;
     var _lastImageSrc = null;
+    var _pendingSource = null;
 
     // ═════════════════════════════════════════════════════════════════
     //  INICIALIZACIÓN
@@ -86,6 +87,7 @@
 
     function _cacheDOM() {
         _modal = document.getElementById('modal-scan');
+        _states.tips = document.getElementById('scan-state-tips');
         _states.idle = document.getElementById('scan-state-idle');
         _states.analyzing = document.getElementById('scan-state-analyzing');
         _states.result = document.getElementById('scan-state-result');
@@ -110,14 +112,35 @@
         var btnRetry = document.getElementById('scan-btn-retry');
         var btnErrManual = document.getElementById('scan-btn-error-manual');
 
-        if (btnCamera) btnCamera.addEventListener('click', function () { _capture('CAMERA'); });
-        if (btnGallery) btnGallery.addEventListener('click', function () { _capture('PHOTOS'); });
+        function _launchCapture(source) {
+            var skipTips;
+            try { skipTips = localStorage.getItem('scanner_skip_tips') === '1'; }
+            catch(e) { skipTips = false; }
+            if (skipTips) {
+                _capture(source);
+                return;
+            }
+            _pendingSource = source;
+            _showState('tips');
+        }
+
+        if (btnCamera) btnCamera.addEventListener('click', function () { _launchCapture('CAMERA'); });
+        if (btnGallery) btnGallery.addEventListener('click', function () { _launchCapture('PHOTOS'); });
         if (btnRetake) btnRetake.addEventListener('click', function () { _showState('idle'); });
         if (btnConfirm) btnConfirm.addEventListener('click', _confirm);
         if (btnClose) btnClose.addEventListener('click', close);
         if (btnManual) btnManual.addEventListener('click', _closeAndFocusManual);
         if (btnRetry) btnRetry.addEventListener('click', function () { _showState('idle'); });
         if (btnErrManual) btnErrManual.addEventListener('click', _closeAndFocusManual);
+
+        var btnTipsContinue = document.getElementById('scan-tips-continue');
+        if (btnTipsContinue) btnTipsContinue.addEventListener('click', function () {
+            var skipCheck = document.getElementById('scan-tips-skip');
+            if (skipCheck && skipCheck.checked) {
+                try { localStorage.setItem('scanner_skip_tips', '1'); } catch(e) {}
+            }
+            _capture(_pendingSource);
+        });
 
         // Cerrar modal al hacer click fuera de la card
         if (_modal) {
