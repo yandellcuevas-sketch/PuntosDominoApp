@@ -1694,6 +1694,10 @@ body {
     box-shadow: 0 0 10px rgba(167, 139, 250, 0.1);
     letter-spacing: 0.5px;
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 .qbtn-scan:hover {
     background: rgba(167, 139, 250, 0.15);
