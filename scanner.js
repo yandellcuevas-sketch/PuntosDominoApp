@@ -14,7 +14,7 @@
 
     // ── Configuración ──────
     var GEMINI_API_KEY = ['AQ.Ab8R', 'N6K6jU6', '7avMHZ1', '2d-rreY', 'wt-jE1P', 'K2IUZLM', 'SB-KpMx', 'qdbg'].join('');
-    var GEMINI_MODEL = 'gemini-3.5-flash';
+    var GEMINI_MODEL = 'gemini-2.5-flash';
     var GEMINI_URL = 'https://dark-tooth-72cf.yandellcuevas94.workers.dev/';
     var MAX_IMAGE_SIZE = 1600; // px — máximo del lado más largo antes de enviar
 
