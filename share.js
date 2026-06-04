@@ -1,52 +1,60 @@
 /* ═══════════════════════════════════════════════════════════════════
-   share.js — Módulo de Compartir Resultado
+   share.js — Módulo de Compartir Resultado  v2
    ─────────────────────────────────────────────────────────────────
+   Fase 2: Capacitor Share nativo + Capacitor Filesystem + Canvas rediseñado
    REGLAS DE ORO:
    • Módulo 100% aislado — no modifica state, no toca localStorage.
    • Solo usa datos del objeto `gameData` que recibe como parámetro.
    • Canvas API puro — sin html2canvas ni dependencias externas.
-   • Web Share API con fallback automático a descarga de archivo PNG.
+   • Cadena de compartir: Capacitor.Share → Web Share API → descarga web.
+   • Cadena de guardar: Capacitor.Filesystem (Photos) → descarga web.
    ═══════════════════════════════════════════════════════════════════ */
 
 (function () {
     'use strict';
 
     // ── Configuración de Canvas ──────────────────────────────────────
-    var CARD_SIZE    = 1080;   // cuadrado 1080x1080
-    var LOGO_PATH    = 'logodomino.png';
+    var CARD_W = 1080;
+    var CARD_H = 1080;
+    var LOGO_PATH = 'logodomino.png';
 
-    // ── Paleta de Colores (alineada con style.css) ───────────────────
+    // ── Paleta (alineada con style.css variables) ────────────────────
     var C = {
-        bg1:         '#0a0b0f',
-        bg2:         '#10121a',
-        bg3:         '#181c28',
+        bg1:         '#07080d',
+        bg2:         '#0d1020',
+        bg3:         '#141826',
         neon:        '#2af0ff',
-        neon2:       '#0099ff',
+        neon2:       '#0095ff',
         gold:        '#f0b429',
-        red:         '#ff6b6b',
-        white:       '#e8eaf0',
-        muted:       '#6b7280',
-        glass:       'rgba(255,255,255,0.05)',
-        glassBorder: 'rgba(255,255,255,0.10)',
-        neonGlow:    'rgba(42,240,255,0.20)',
-        goldGlow:    'rgba(240,180,41,0.25)',
+        red:         '#ff5a5a',
+        white:       '#eef0f6',
+        dim:         '#9ba3b4',
+        muted:       '#5c6475',
+        winBg1:      'rgba(30,240,255,0.11)',
+        winBg2:      'rgba(0,148,255,0.04)',
+        winBorder:   'rgba(42,240,255,0.50)',
+        loseBg1:     'rgba(255,90,90,0.07)',
+        loseBg2:     'rgba(255,90,90,0.01)',
+        loseBorder:  'rgba(255,90,90,0.28)',
+        statBg:      'rgba(255,255,255,0.04)',
+        statBorder:  'rgba(255,255,255,0.09)',
     };
 
-    // ── Tipografías (las mismas que carga index.html) ────────────────
+    // ── Fuentes (cargadas por index.html) ────────────────────────────
     var F = {
-        display:  "'Bebas Neue', sans-serif",
-        body:     "'DM Sans', sans-serif",
-        mono:     "'JetBrains Mono', monospace",
+        display: "'Bebas Neue', Impact, sans-serif",
+        body:    "'DM Sans', 'Segoe UI', sans-serif",
+        mono:    "'JetBrains Mono', 'Courier New', monospace",
     };
 
-    // ── Referencias DOM ──────────────────────────────────────────────
-    var _modal         = null;
-    var _previewImg    = null;
-    var _btnShare      = null;
-    var _btnSave       = null;
-    var _btnClose      = null;
-    var _shareStatus   = null;
-    var _currentBlob   = null;
+    // ── Estado interno ───────────────────────────────────────────────
+    var _modal          = null;
+    var _previewImg     = null;
+    var _btnShare       = null;
+    var _btnSave        = null;
+    var _btnClose       = null;
+    var _shareStatus    = null;
+    var _currentBlob    = null;
     var _currentDataURL = null;
     var _currentGameData = null;
 
@@ -66,20 +74,17 @@
         if (_btnShare)  _btnShare.addEventListener('click', _share);
         if (_btnSave)   _btnSave.addEventListener('click', _download);
 
-        // Cerrar al hacer click en el overlay (fondo)
         if (_modal) {
             _modal.addEventListener('click', function (e) {
                 if (e.target === _modal) close();
             });
         }
 
-        console.log('[share] Módulo de compartir cargado ✓');
+        console.log('[share] DominoShare v2 listo ✓');
     }
 
     // ═════════════════════════════════════════════════════════════════
-    //  API PÚBLICA — open(gameData)
-    //  gameData puede provenir de state.game (partida activa)
-    //  o de una entrada del historial (entry de state.history).
+    //  API PÚBLICA
     // ═════════════════════════════════════════════════════════════════
 
     function open(gameData) {
@@ -88,20 +93,29 @@
         _currentBlob     = null;
         _currentDataURL  = null;
 
-        // Mostrar modal con estado de carga
         _showLoading(true);
         _modal.classList.remove('hidden');
 
-        // Esperar fuentes y luego renderizar
         document.fonts.ready.then(function () {
             _render(gameData).then(function (result) {
                 _currentDataURL = result.dataURL;
                 _currentBlob    = result.blob;
-                if (_previewImg) _previewImg.src = result.dataURL;
-                _showLoading(false);
+                if (_previewImg) {
+                    _previewImg.classList.remove('share-img-visible');
+                    _previewImg.src = result.dataURL;
+                    _previewImg.onload = function () {
+                        _showLoading(false);
+                        // Trigger fade-in
+                        requestAnimationFrame(function () {
+                            _previewImg.classList.add('share-img-visible');
+                        });
+                    };
+                } else {
+                    _showLoading(false);
+                }
             }).catch(function (err) {
                 console.error('[share] Error al generar imagen:', err);
-                _setStatus('No se pudo generar la imagen. Inténtalo de nuevo.', true);
+                _setStatus('No se pudo generar la imagen.', true);
                 _showLoading(false);
             });
         });
@@ -109,465 +123,557 @@
 
     function close() {
         if (_modal) _modal.classList.add('hidden');
+        if (_previewImg) _previewImg.classList.remove('share-img-visible');
         _currentBlob     = null;
         _currentDataURL  = null;
         _currentGameData = null;
     }
 
     // ═════════════════════════════════════════════════════════════════
-    //  RENDERIZADO CANVAS — 1080x1080
+    //  RENDERIZADO CANVAS
     // ═════════════════════════════════════════════════════════════════
 
     function _render(gd) {
         return new Promise(function (resolve, reject) {
-            // Cargar el logo antes de dibujar
             var logo = new Image();
             logo.crossOrigin = 'anonymous';
 
-            logo.onload = function () {
+            function draw(img) {
                 try {
                     var canvas = document.createElement('canvas');
-                    canvas.width  = CARD_SIZE;
-                    canvas.height = CARD_SIZE;
+                    canvas.width  = CARD_W;
+                    canvas.height = CARD_H;
                     var ctx = canvas.getContext('2d');
-
-                    _drawCard(ctx, gd, logo);
-
+                    _drawCard(ctx, gd, img);
                     canvas.toBlob(function (blob) {
-                        var dataURL = canvas.toDataURL('image/png');
-                        resolve({ dataURL: dataURL, blob: blob });
-                    }, 'image/png');
-
-                } catch (err) {
-                    reject(err);
-                }
-            };
-
-            logo.onerror = function () {
-                // Si el logo no carga, dibujamos la tarjeta sin él
-                try {
-                    var canvas = document.createElement('canvas');
-                    canvas.width  = CARD_SIZE;
-                    canvas.height = CARD_SIZE;
-                    var ctx = canvas.getContext('2d');
-
-                    _drawCard(ctx, gd, null);
-
-                    canvas.toBlob(function (blob) {
-                        var dataURL = canvas.toDataURL('image/png');
-                        resolve({ dataURL: dataURL, blob: blob });
+                        resolve({ dataURL: canvas.toDataURL('image/png'), blob: blob });
                     }, 'image/png');
                 } catch (err) {
                     reject(err);
                 }
-            };
+            }
 
+            logo.onload  = function () { draw(logo); };
+            logo.onerror = function () { draw(null); };
             logo.src = LOGO_PATH;
         });
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  _drawCard: orquesta todas las capas del canvas
+    //  CAPAS DEL CANVAS (orquestador)
     // ─────────────────────────────────────────────────────────────────
 
     function _drawCard(ctx, gd, logo) {
-        var S = CARD_SIZE;
+        var W = CARD_W, H = CARD_H;
 
-        // ── 1. Fondo degradado ────────────────────────────────────────
-        var bgGrad = ctx.createLinearGradient(0, 0, S, S);
-        bgGrad.addColorStop(0, C.bg1);
-        bgGrad.addColorStop(0.5, C.bg2);
-        bgGrad.addColorStop(1, C.bg3);
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, S, S);
+        _drawBackground(ctx, W, H);
+        _drawHeader(ctx, gd, logo, W);
+        _drawDivider(ctx, W, 95);
+        _drawHeroScore(ctx, gd, W);
+        _drawStatsBadges(ctx, gd, W);
+        _drawFooter(ctx, W, H);
+    }
 
-        // ── 2. Brillo radial de fondo (atmosphérico) ─────────────────
-        var glow = ctx.createRadialGradient(S / 2, S * 0.25, 0, S / 2, S * 0.25, S * 0.5);
-        glow.addColorStop(0, 'rgba(42,240,255,0.07)');
-        glow.addColorStop(1, 'transparent');
-        ctx.fillStyle = glow;
-        ctx.fillRect(0, 0, S, S);
+    // ─────────────────────────────────────────────────────────────────
+    //  1. FONDO
+    // ─────────────────────────────────────────────────────────────────
 
-        // ── 3. Borde neón exterior de la tarjeta ─────────────────────
-        _drawRoundedRect(ctx, 4, 4, S - 8, S - 8, 32);
-        ctx.strokeStyle = 'rgba(42,240,255,0.35)';
+    function _drawBackground(ctx, W, H) {
+        // Base oscura
+        var bg = ctx.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0,   C.bg1);
+        bg.addColorStop(0.6, C.bg2);
+        bg.addColorStop(1,   C.bg3);
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // Halo radial superior (neón)
+        var haloTop = ctx.createRadialGradient(W * 0.5, 0, 0, W * 0.5, 0, W * 0.75);
+        haloTop.addColorStop(0, 'rgba(42,240,255,0.08)');
+        haloTop.addColorStop(1, 'transparent');
+        ctx.fillStyle = haloTop;
+        ctx.fillRect(0, 0, W, H);
+
+        // Halo radial inferior izquierdo (acento)
+        var haloBot = ctx.createRadialGradient(W * 0.2, H, 0, W * 0.2, H, W * 0.6);
+        haloBot.addColorStop(0, 'rgba(0,148,255,0.05)');
+        haloBot.addColorStop(1, 'transparent');
+        ctx.fillStyle = haloBot;
+        ctx.fillRect(0, 0, W, H);
+
+        // Borde exterior con brillo neón
+        _roundRect(ctx, 3, 3, W - 6, H - 6, 28);
+        ctx.strokeStyle = 'rgba(42,240,255,0.30)';
         ctx.lineWidth = 3;
         ctx.stroke();
-
-        // ── 4. Línea decorativa superior ─────────────────────────────
-        var lineGrad = ctx.createLinearGradient(80, 0, S - 80, 0);
-        lineGrad.addColorStop(0, 'transparent');
-        lineGrad.addColorStop(0.3, C.neon);
-        lineGrad.addColorStop(0.7, C.neon2);
-        lineGrad.addColorStop(1, 'transparent');
-        ctx.beginPath();
-        ctx.moveTo(80, 52);
-        ctx.lineTo(S - 80, 52);
-        ctx.strokeStyle = lineGrad;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // ── 5. Header — Logo + Nombre de la app ──────────────────────
-        _drawHeader(ctx, gd, logo, S);
-
-        // ── 6. Título "PARTIDA TERMINADA" ─────────────────────────────
-        _drawTitle(ctx, gd, S);
-
-        // ── 7. Bloque central de marcador ─────────────────────────────
-        _drawScoreBlock(ctx, gd, S);
-
-        // ── 8. Badges de estadísticas ─────────────────────────────────
-        _drawStatsBadges(ctx, gd, S);
-
-        // ── 9. Footer ─────────────────────────────────────────────────
-        _drawFooter(ctx, S);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  Header: Logo + "DOMINÓSCORE PRO"
+    //  2. HEADER — logo izquierda, app name centrado, fecha derecha
     // ─────────────────────────────────────────────────────────────────
 
-    function _drawHeader(ctx, gd, logo, S) {
-        var centerX = S / 2;
-        var logoY = 80;
-        var logoSize = 90;
+    function _drawHeader(ctx, gd, logo, W) {
+        var H_ROW = 74;  // altura total del header
+        var PAD   = 44;  // padding lateral
+        var LOGO_D = 48; // diámetro logo
+        var cy    = H_ROW / 2 + 2; // centro vertical
 
-        // Anillo de brillo detrás del logo
+        // ── Logo (pequeño, circular) ──────────────────────────────────
+        var lx = PAD + LOGO_D / 2;
+        var ly = cy;
+
         ctx.save();
-        var logoGlow = ctx.createRadialGradient(centerX, logoY + logoSize / 2, 0, centerX, logoY + logoSize / 2, 70);
-        logoGlow.addColorStop(0, 'rgba(42,240,255,0.18)');
-        logoGlow.addColorStop(1, 'transparent');
-        ctx.fillStyle = logoGlow;
+        // Glow detrás del logo
+        var lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, LOGO_D);
+        lg.addColorStop(0, 'rgba(42,240,255,0.18)');
+        lg.addColorStop(1, 'transparent');
+        ctx.fillStyle = lg;
         ctx.beginPath();
-        ctx.arc(centerX, logoY + logoSize / 2, 70, 0, Math.PI * 2);
+        ctx.arc(lx, ly, LOGO_D, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
 
-        // Círculo de fondo del logo
-        ctx.save();
+        // Clip circular
         ctx.beginPath();
-        ctx.arc(centerX, logoY + logoSize / 2, logoSize / 2 + 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(42,240,255,0.08)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(42,240,255,0.35)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
-
-        // Logo (si cargó)
+        ctx.arc(lx, ly, LOGO_D / 2, 0, Math.PI * 2);
         if (logo) {
             ctx.save();
-            ctx.beginPath();
-            ctx.arc(centerX, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
             ctx.clip();
-            ctx.drawImage(logo, centerX - logoSize / 2, logoY, logoSize, logoSize);
-            ctx.restore();
-        } else {
-            // Placeholder si no hay logo
-            ctx.save();
-            ctx.fillStyle = C.neon;
-            ctx.font = '72px ' + F.display;
-            ctx.textAlign = 'center';
-            ctx.fillText('D', centerX, logoY + logoSize * 0.75);
+            ctx.drawImage(logo, lx - LOGO_D / 2, ly - LOGO_D / 2, LOGO_D, LOGO_D);
             ctx.restore();
         }
 
-        // "DOMINÓSCORE PRO"
+        // Anillo neón sobre el logo
+        ctx.beginPath();
+        ctx.arc(lx, ly, LOGO_D / 2 + 1, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(42,240,255,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // ── App name centrado ──────────────────────────────────────────
         ctx.save();
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillStyle = C.white;
-        ctx.font = '600 30px ' + F.body;
-        ctx.letterSpacing = '4px';
-        ctx.fillText('DOMINÓSCORE PRO', centerX, logoY + logoSize + 44);
+        ctx.font = '700 26px ' + F.body;
+        ctx.fillText('DOMINOSCORE PRO', W / 2, cy - 7);
+
+        // Subtítulo "by Yandell Cuevas"
+        ctx.fillStyle = C.muted;
+        ctx.font = '400 15px ' + F.body;
+        ctx.fillText('Resultado Oficial de Partida', W / 2, cy + 14);
+        ctx.restore();
+
+        // ── Fecha a la derecha ──────────────────────────────────────────
+        var dateStr = _formatShortDate(gd.endTime);
+        ctx.save();
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = C.dim;
+        ctx.font = '500 17px ' + F.mono;
+        ctx.fillText(dateStr, W - PAD, cy);
         ctx.restore();
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  Título — "PARTIDA TERMINADA" y badge de LISA si aplica
+    //  Línea divisora con degradado
     // ─────────────────────────────────────────────────────────────────
 
-    function _drawTitle(ctx, gd, S) {
-        var centerX = S / 2;
-        var y = 285;
-
-        // Separador
-        var sepGrad = ctx.createLinearGradient(140, 0, S - 140, 0);
-        sepGrad.addColorStop(0, 'transparent');
-        sepGrad.addColorStop(0.5, 'rgba(255,255,255,0.12)');
-        sepGrad.addColorStop(1, 'transparent');
+    function _drawDivider(ctx, W, y) {
+        var grad = ctx.createLinearGradient(60, 0, W - 60, 0);
+        grad.addColorStop(0,   'transparent');
+        grad.addColorStop(0.25, 'rgba(42,240,255,0.25)');
+        grad.addColorStop(0.75, 'rgba(0,148,255,0.20)');
+        grad.addColorStop(1,   'transparent');
         ctx.beginPath();
-        ctx.moveTo(140, y - 14);
-        ctx.lineTo(S - 140, y - 14);
-        ctx.strokeStyle = sepGrad;
+        ctx.moveTo(60, y);
+        ctx.lineTo(W - 60, y);
+        ctx.strokeStyle = grad;
         ctx.lineWidth = 1;
         ctx.stroke();
-
-        // Título
-        ctx.save();
-        ctx.textAlign = 'center';
-
-        // Degradado de texto
-        var titleGrad = ctx.createLinearGradient(centerX - 250, 0, centerX + 250, 0);
-        titleGrad.addColorStop(0, C.neon);
-        titleGrad.addColorStop(1, C.neon2);
-        ctx.fillStyle = titleGrad;
-        ctx.font = '86px ' + F.display;
-        ctx.fillText('PARTIDA TERMINADA', centerX, y);
-        ctx.restore();
-
-        // Badge LISA si aplica
-        if (gd.isLisa) {
-            ctx.save();
-            var badgeX = centerX;
-            var badgeY = y + 26;
-            var bw = 260;
-            var bh = 38;
-
-            // Fondo del badge
-            _drawRoundedRect(ctx, badgeX - bw / 2, badgeY, bw, bh, 19);
-            var badgeGrad = ctx.createLinearGradient(badgeX - bw / 2, 0, badgeX + bw / 2, 0);
-            badgeGrad.addColorStop(0, C.gold);
-            badgeGrad.addColorStop(1, '#e68900');
-            ctx.fillStyle = badgeGrad;
-            ctx.fill();
-
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#0a0b0f';
-            ctx.font = 'bold 20px ' + F.body;
-            ctx.fillText('LISAAA — RIVAL EN 0', badgeX, badgeY + 25);
-            ctx.restore();
-        }
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  Bloque de Marcador Central
+    //  3. HERO SCORE — bloque principal de resultado
     // ─────────────────────────────────────────────────────────────────
 
-    function _drawScoreBlock(ctx, gd, S) {
-        var topY  = gd.isLisa ? 380 : 338;
-        var blockW = 440;
-        var blockH = 240;
-        var gap    = 20;
-        var leftX  = S / 2 - blockW - gap / 2;
-        var rightX = S / 2 + gap / 2;
-        var radius = 20;
-
-        // Extraer datos del ganador/perdedor
-        // Soporta tanto el formato de state.game como el formato de historial
+    function _drawHeroScore(ctx, gd, W) {
+        // Extraer datos compatibles con ambos formatos
         var winner, loser;
         if (gd.winnerTeam) {
-            // Formato historial: { winnerTeam: { players, score }, loserTeam: { players, score } }
             winner = gd.winnerTeam;
             loser  = gd.loserTeam;
         } else if (gd.winner && gd.teams) {
-            // Formato state.game
             winner = { players: gd.teams[gd.winner - 1].players, score: gd.teams[gd.winner - 1].score };
-            var loseIdx = gd.winner === 1 ? 1 : 0;
-            loser  = { players: gd.teams[loseIdx].players, score: gd.teams[loseIdx].score };
+            var li = gd.winner === 1 ? 1 : 0;
+            loser  = { players: gd.teams[li].players, score: gd.teams[li].score };
         } else {
-            return; // Sin datos, no dibujar
+            return;
         }
 
-        var winnerName = winner.players ? winner.players[0] + (winner.players[1] ? ' & ' + winner.players[1] : '') : 'Ganador';
-        var loserName  = loser.players  ? loser.players[0]  + (loser.players[1]  ? ' & ' + loser.players[1]  : '') : 'Perdedor';
+        var topY  = 112;
+        var totalH = 490;
+        var GAP   = 16;
+        var PAD   = 32;
 
-        // ─ Bloque GANADOR (izquierda) ───────────────────────────────
+        // ─ Dimensiones: ganador 62% del ancho, perdedor 38% - gap ─────
+        var winW  = Math.round((W - PAD * 2 - GAP) * 0.62);
+        var loseW = W - PAD * 2 - GAP - winW;
+        var winX  = PAD;
+        var loseX = PAD + winW + GAP;
+        var R     = 22;
+
+        // ─ Bloque GANADOR ────────────────────────────────────────────
         ctx.save();
 
-        // Fondo con brillo cian
-        _drawRoundedRect(ctx, leftX, topY, blockW, blockH, radius);
-        var winGrad = ctx.createLinearGradient(leftX, topY, leftX, topY + blockH);
-        winGrad.addColorStop(0, 'rgba(42,240,255,0.12)');
-        winGrad.addColorStop(1, 'rgba(42,240,255,0.04)');
-        ctx.fillStyle = winGrad;
+        // Sombra exterior del bloque ganador
+        ctx.shadowColor = 'rgba(42,240,255,0.25)';
+        ctx.shadowBlur  = 40;
+        _roundRect(ctx, winX, topY, winW, totalH, R);
+        var wg = ctx.createLinearGradient(winX, topY, winX, topY + totalH);
+        wg.addColorStop(0, C.winBg1);
+        wg.addColorStop(1, C.winBg2);
+        ctx.fillStyle = wg;
         ctx.fill();
-        ctx.strokeStyle = 'rgba(42,240,255,0.45)';
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = C.winBorder;
         ctx.lineWidth = 1.5;
+        _roundRect(ctx, winX, topY, winW, totalH, R);
         ctx.stroke();
 
-        // Icono corona (SVG-like en canvas)
-        ctx.textAlign = 'center';
-        ctx.font = '28px serif';
-        ctx.fillText('★', leftX + blockW / 2, topY + 36);
+        // Línea de acento superior (neón full-width del bloque)
+        var accentGrad = ctx.createLinearGradient(winX, 0, winX + winW, 0);
+        accentGrad.addColorStop(0, C.neon2);
+        accentGrad.addColorStop(1, C.neon);
+        ctx.beginPath();
+        ctx.moveTo(winX + R, topY + 1.5);
+        ctx.lineTo(winX + winW - R, topY + 1.5);
+        ctx.strokeStyle = accentGrad;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Icono corona (dibujado con paths, no unicode)
+        _drawCrown(ctx, winX + winW / 2, topY + 54, 22, C.gold);
 
         // Label "GANADOR"
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.neon;
-        ctx.font = 'bold 16px ' + F.body;
-        ctx.letterSpacing = '3px';
-        ctx.fillText('GANADOR', leftX + blockW / 2, topY + 58);
+        ctx.font = '700 18px ' + F.body;
+        ctx.fillText('GANADOR', winX + winW / 2, topY + 98);
 
-        // Nombres
+        // Nombres del equipo ganador
+        var winNames = _formatTeamName(winner.players);
         ctx.fillStyle = C.white;
-        ctx.font = '500 26px ' + F.body;
-        ctx.letterSpacing = '0px';
-        ctx.fillText(_truncate(winnerName, 22), leftX + blockW / 2, topY + 96);
+        ctx.font = '600 32px ' + F.body;
+        ctx.fillText(_truncate(winNames[0], 18), winX + winW / 2, topY + 148);
+        if (winNames[1]) {
+            ctx.fillStyle = C.dim;
+            ctx.font = '400 24px ' + F.body;
+            ctx.fillText(_truncate(winNames[1], 18), winX + winW / 2, topY + 182);
+        }
 
-        // Puntos (gran número con sombra neón)
+        // Score GRANDE con glow neón
+        var scoreY = topY + 400;
+        ctx.save();
         ctx.shadowColor = C.neon;
-        ctx.shadowBlur = 22;
-        ctx.fillStyle = C.neon;
-        ctx.font = '148px ' + F.display;
-        ctx.fillText(winner.score, leftX + blockW / 2, topY + 222);
-        ctx.shadowBlur = 0;
+        ctx.shadowBlur  = 32;
+        ctx.fillStyle   = C.neon;
+        ctx.font        = '260px ' + F.display;
+        ctx.textAlign   = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(String(winner.score), winX + winW / 2, scoreY);
+        ctx.restore();
+
+        // Label "PTS" debajo del score
+        ctx.fillStyle = 'rgba(42,240,255,0.45)';
+        ctx.font = '700 22px ' + F.body;
+        ctx.fillText('PTS', winX + winW / 2, scoreY + 26);
 
         ctx.restore();
 
-        // ─ Bloque PERDEDOR (derecha) ─────────────────────────────────
+        // ─ Bloque PERDEDOR ───────────────────────────────────────────
         ctx.save();
 
-        _drawRoundedRect(ctx, rightX, topY, blockW, blockH, radius);
-        var loseGrad = ctx.createLinearGradient(rightX, topY, rightX, topY + blockH);
-        loseGrad.addColorStop(0, 'rgba(255,107,107,0.08)');
-        loseGrad.addColorStop(1, 'rgba(255,107,107,0.02)');
-        ctx.fillStyle = loseGrad;
+        _roundRect(ctx, loseX, topY, loseW, totalH, R);
+        var rg = ctx.createLinearGradient(loseX, topY, loseX, topY + totalH);
+        rg.addColorStop(0, C.loseBg1);
+        rg.addColorStop(1, C.loseBg2);
+        ctx.fillStyle = rg;
         ctx.fill();
-        ctx.strokeStyle = 'rgba(255,107,107,0.30)';
+        ctx.strokeStyle = C.loseBorder;
         ctx.lineWidth = 1.5;
+        _roundRect(ctx, loseX, topY, loseW, totalH, R);
         ctx.stroke();
 
-        // Guión
-        ctx.textAlign = 'center';
+        // Guión decorativo en lugar de corona
+        ctx.textAlign   = 'center';
+        ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.muted;
-        ctx.font = '28px ' + F.body;
-        ctx.fillText('—', rightX + blockW / 2, topY + 36);
+        ctx.font = '400 20px ' + F.body;
+        ctx.fillText('2.°', loseX + loseW / 2, topY + 58);
 
         // Label "SEGUNDO"
         ctx.fillStyle = C.red;
-        ctx.font = 'bold 16px ' + F.body;
-        ctx.letterSpacing = '3px';
-        ctx.fillText('SEGUNDO', rightX + blockW / 2, topY + 58);
+        ctx.font = '700 16px ' + F.body;
+        ctx.fillText('SEGUNDO', loseX + loseW / 2, topY + 88);
 
-        // Nombres
-        ctx.fillStyle = C.muted;
-        ctx.font = '500 26px ' + F.body;
-        ctx.letterSpacing = '0px';
-        ctx.fillText(_truncate(loserName, 22), rightX + blockW / 2, topY + 96);
+        // Nombre(s) equipo perdedor
+        var loseNames = _formatTeamName(loser.players);
+        ctx.fillStyle = C.dim;
+        ctx.font = '500 24px ' + F.body;
+        ctx.fillText(_truncate(loseNames[0], 14), loseX + loseW / 2, topY + 130);
+        if (loseNames[1]) {
+            ctx.fillStyle = C.muted;
+            ctx.font = '400 18px ' + F.body;
+            ctx.fillText(_truncate(loseNames[1], 14), loseX + loseW / 2, topY + 158);
+        }
 
-        // Puntos
+        // Score del perdedor
+        ctx.save();
         ctx.fillStyle = C.red;
-        ctx.font = '130px ' + F.display;
-        ctx.fillText(loser.score, rightX + blockW / 2, topY + 222);
+        ctx.font = '160px ' + F.display;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(String(loser.score), loseX + loseW / 2, topY + 390);
+        ctx.restore();
+
+        ctx.fillStyle = 'rgba(255,90,90,0.40)';
+        ctx.font = '600 16px ' + F.body;
+        ctx.fillText('PTS', loseX + loseW / 2, topY + 418);
+
+        // Badge LISA
+        if (gd.isLisa) {
+            _drawLisaBadge(ctx, loseX + loseW / 2, topY + totalH - 46, loseW - 24);
+        }
 
         ctx.restore();
+
+        // ─ Divisor inferior del hero ─────────────────────────────────
+        _drawDivider(ctx, W, topY + totalH + 22);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  Badges de Estadísticas
+    //  4. ESTADÍSTICAS — 4 badges en una fila
     // ─────────────────────────────────────────────────────────────────
 
-    function _drawStatsBadges(ctx, gd, S) {
-        var topY = 648;
+    function _drawStatsBadges(ctx, gd, W) {
+        var topY = 636;
+        var PAD  = 32;
+        var COLS = 4;
+        var GAP  = 14;
+        var bW   = Math.floor((W - PAD * 2 - GAP * (COLS - 1)) / COLS);
+        var bH   = 128;
+        var R    = 18;
 
-        // Calcular estadísticas
+        // Calcular valores
         var duration   = _calcDuration(gd.startTime, gd.endTime);
-        var handsCount = gd.hands;  // En historial es un número directo
-        var capicuas   = gd.capicuas; // En historial es un número directo
-        var limit      = gd.limit || '—';
-        var dateStr    = _formatShortDate(gd.endTime);
-
-        // Si viene de state.game (tiene arrays):
+        var handsCount, capicuas;
         if (gd.hands && Array.isArray(gd.hands)) {
             handsCount = gd.hands.length;
             capicuas   = gd.hands.filter(function (h) { return h.capi; }).length;
+        } else {
+            handsCount = gd.hands;
+            capicuas   = gd.capicuas;
         }
+        var limit = gd.limit || '—';
 
         var badges = [
-            { label: 'DURACIÓN',  value: duration },
-            { label: 'MANOS',     value: handsCount || '—' },
-            { label: 'CAPICÚAS',  value: capicuas !== undefined ? capicuas : '—' },
-            { label: 'LÍMITE',    value: limit },
-            { label: 'FECHA',     value: dateStr },
+            { icon: 'clock',   label: 'DURACIÓN',  value: duration,             accent: C.neon2 },
+            { icon: 'hand',    label: 'MANOS',     value: handsCount || '—',    accent: C.neon  },
+            { icon: 'diamond', label: 'CAPICÚAS',  value: capicuas !== undefined ? capicuas : '—', accent: C.gold },
+            { icon: 'target',  label: 'LÍMITE',    value: limit,                accent: C.dim   },
         ];
 
-        var badgeW  = 174;
-        var badgeH  = 84;
-        var cols    = 5;
-        var totalW  = cols * badgeW + (cols - 1) * 14;
-        var startX  = (S - totalW) / 2;
-        var radius  = 14;
-
         badges.forEach(function (b, i) {
-            var bx = startX + i * (badgeW + 14);
+            var bx = PAD + i * (bW + GAP);
             var by = topY;
+            var cx = bx + bW / 2;
 
             ctx.save();
 
-            // Fondo del badge
-            _drawRoundedRect(ctx, bx, by, badgeW, badgeH, radius);
-            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            // Fondo
+            _roundRect(ctx, bx, by, bW, bH, R);
+            ctx.fillStyle = C.statBg;
             ctx.fill();
-            ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+            ctx.strokeStyle = C.statBorder;
             ctx.lineWidth = 1;
+            _roundRect(ctx, bx, by, bW, bH, R);
             ctx.stroke();
 
-            // Valor
-            ctx.textAlign = 'center';
-            ctx.fillStyle = C.white;
-            ctx.font = '700 28px ' + F.mono;
-            ctx.fillText(String(b.value), bx + badgeW / 2, by + 46);
+            // Línea de acento superior
+            var accG = ctx.createLinearGradient(bx, 0, bx + bW, 0);
+            accG.addColorStop(0, 'transparent');
+            accG.addColorStop(0.5, b.accent);
+            accG.addColorStop(1, 'transparent');
+            ctx.beginPath();
+            ctx.moveTo(bx + R, by + 1.5);
+            ctx.lineTo(bx + bW - R, by + 1.5);
+            ctx.strokeStyle = b.accent;
+            ctx.globalAlpha = 0.6;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // Valor grande
+            ctx.textAlign   = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle   = C.white;
+            ctx.font        = '700 40px ' + F.mono;
+            ctx.fillText(String(b.value), cx, by + 72);
 
             // Label
             ctx.fillStyle = C.muted;
-            ctx.font = '500 13px ' + F.body;
-            ctx.letterSpacing = '1px';
-            ctx.fillText(b.label, bx + badgeW / 2, by + 70);
+            ctx.font = '500 14px ' + F.body;
+            ctx.fillText(b.label, cx, by + 100);
 
             ctx.restore();
         });
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  Footer
+    //  5. FOOTER
     // ─────────────────────────────────────────────────────────────────
 
-    function _drawFooter(ctx, S) {
-        var y = S - 36;
+    function _drawFooter(ctx, W, H) {
+        var y = H - 30;
 
-        // Línea separadora
-        var lineGrad = ctx.createLinearGradient(80, 0, S - 80, 0);
-        lineGrad.addColorStop(0, 'transparent');
-        lineGrad.addColorStop(0.5, 'rgba(255,255,255,0.10)');
-        lineGrad.addColorStop(1, 'transparent');
+        _drawDivider(ctx, W, y - 20);
+
+        ctx.textAlign   = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle   = C.muted;
+        ctx.font        = '400 17px ' + F.body;
+        ctx.fillText('DominoScorePro · dominoscore.app · iOS & Android', W / 2, y);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  CORONA dibujada con canvas paths (sin unicode)
+    // ─────────────────────────────────────────────────────────────────
+
+    function _drawCrown(ctx, cx, cy, size, color) {
+        ctx.save();
+        ctx.fillStyle = color;
+        var s = size;
+
+        // Corona simple: base + 3 puntas
         ctx.beginPath();
-        ctx.moveTo(80, y - 18);
-        ctx.lineTo(S - 80, y - 18);
-        ctx.strokeStyle = lineGrad;
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // Base rectangular de la corona
+        ctx.moveTo(cx - s, cy + s * 0.4);
+        ctx.lineTo(cx + s, cy + s * 0.4);
+        ctx.lineTo(cx + s * 0.85, cy + s);
+        ctx.lineTo(cx - s * 0.85, cy + s);
+        ctx.closePath();
+        ctx.fill();
 
-        ctx.textAlign = 'center';
-        ctx.fillStyle = C.muted;
-        ctx.font = '18px ' + F.body;
-        ctx.fillText('Registrado con DominoScorePro · Disponible en iOS & Android', S / 2, y);
+        // Punta izquierda
+        ctx.beginPath();
+        ctx.moveTo(cx - s, cy + s * 0.4);
+        ctx.lineTo(cx - s * 0.95, cy - s * 0.5);
+        ctx.lineTo(cx - s * 0.4, cy);
+        ctx.closePath();
+        ctx.fill();
+
+        // Punta central
+        ctx.beginPath();
+        ctx.moveTo(cx - s * 0.3, cy + s * 0.1);
+        ctx.lineTo(cx, cy - s * 0.85);
+        ctx.lineTo(cx + s * 0.3, cy + s * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        // Punta derecha
+        ctx.beginPath();
+        ctx.moveTo(cx + s, cy + s * 0.4);
+        ctx.lineTo(cx + s * 0.95, cy - s * 0.5);
+        ctx.lineTo(cx + s * 0.4, cy);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Badge LISA
+    // ─────────────────────────────────────────────────────────────────
+
+    function _drawLisaBadge(ctx, cx, cy, maxW) {
+        var bw  = Math.min(maxW, 220);
+        var bh  = 34;
+        var bx  = cx - bw / 2;
+        var by  = cy - bh / 2;
+
+        ctx.save();
+        _roundRect(ctx, bx, by, bw, bh, 17);
+        var grad = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+        grad.addColorStop(0, '#f0b429');
+        grad.addColorStop(1, '#e08000');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.textAlign   = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle   = '#07080d';
+        ctx.font        = '700 15px ' + F.body;
+        ctx.fillText('LISAAA  ·  RIVAL EN 0', cx, cy);
+        ctx.restore();
     }
 
     // ═════════════════════════════════════════════════════════════════
-    //  COMPARTIR / DESCARGAR
+    //  COMPARTIR — cadena: Capacitor.Share → Web Share API → descarga
     // ═════════════════════════════════════════════════════════════════
 
     function _share() {
         if (!_currentBlob && !_currentDataURL) {
-            _setStatus('La imagen aún no está lista. Espera un momento.', true);
+            _setStatus('La imagen aún no está lista.', true);
             return;
         }
 
-        var blob = _currentBlob;
         var winnerName = _getWinnerName(_currentGameData);
-        var filename = 'DominoScorePro_' + _fileDate() + '.png';
+        var filename   = 'DominoScorePro_' + _fileDate() + '.png';
+        var shareText  = '\u00a1' + winnerName + ' gan\u00f3 la partida! Registrado con DominoScorePro.';
+        var base64Data = _currentDataURL ? _currentDataURL.split(',')[1] : null;
 
-        // Intentar Web Share API (con archivo)
-        if (navigator.share && navigator.canShare) {
+        // ── 1. Capacitor Share (nativo iOS / Android) ──────────────────
+        var Cap = window.Capacitor;
+        if (Cap && Cap.isNativePlatform && Cap.isNativePlatform()
+            && Cap.Plugins && Cap.Plugins.Share) {
+
+            Cap.Plugins.Share.share({
+                title:         'DominoScorePro — Resultado',
+                text:          shareText,
+                url:           'https://dominoscore.app',
+                dialogTitle:   'Compartir resultado',
+                // files solo está disponible en Capacitor Share v6+ — opcional
+                files: base64Data ? ['data:image/png;base64,' + base64Data] : undefined,
+            }).then(function () {
+                _setStatus('Compartido exitosamente.', false);
+            }).catch(function (err) {
+                if (err && err.message !== 'Share canceled') {
+                    _shareWebFallback(filename, shareText);
+                }
+            });
+            return;
+        }
+
+        // ── 2. Web Share API (PWA / Safari iOS / Android Chrome) ──────
+        _shareWebFallback(filename, shareText);
+    }
+
+    function _shareWebFallback(filename, shareText) {
+        var blob = _currentBlob;
+        if (navigator.share && navigator.canShare && blob) {
             var file = new File([blob], filename, { type: 'image/png' });
             if (navigator.canShare({ files: [file] })) {
                 navigator.share({
-                    title: 'DominoScorePro — Resultado de Partida',
-                    text: winnerName + ' gan\u00f3 la partida. \u00a1Mira el resultado!',
+                    title: 'DominoScorePro — Resultado',
+                    text:  shareText,
                     files: [file],
                 }).then(function () {
                     _setStatus('Compartido exitosamente.', false);
                 }).catch(function (err) {
-                    if (err.name !== 'AbortError') {
-                        // Fallback si el usuario canceló
+                    if (err && err.name !== 'AbortError') {
                         _download();
                     }
                 });
@@ -575,20 +681,19 @@
             }
         }
 
-        // Fallback: navigator.share sin archivos (solo texto+URL)
         if (navigator.share) {
-            navigator.share({
-                title: 'DominoScorePro — Resultado de Partida',
-                text: winnerName + ' gan\u00f3 la partida. \u00a1Descarga DominoScorePro!',
-            }).catch(function () {
-                _download();
-            });
+            navigator.share({ title: 'DominoScorePro', text: shareText })
+                .catch(function () { _download(); });
             return;
         }
 
-        // Fallback final: descarga directa
+        // ── 3. Fallback final: descarga directa ────────────────────────
         _download();
     }
+
+    // ═════════════════════════════════════════════════════════════════
+    //  GUARDAR — cadena: Capacitor.Filesystem (Photos) → descarga web
+    // ═════════════════════════════════════════════════════════════════
 
     function _download() {
         if (!_currentDataURL) {
@@ -596,31 +701,48 @@
             return;
         }
 
-        var filename = 'DominoScorePro_' + _fileDate() + '.png';
+        var filename   = 'DominoScorePro_' + _fileDate() + '.png';
+        var base64Data = _currentDataURL.split(',')[1];
+        var Cap = window.Capacitor;
 
-        // Intentar Capacitor Filesystem (nativo iOS/Android)
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-            var Filesystem = window.Capacitor.Plugins.Filesystem;
-            var base64Data = _currentDataURL.split(',')[1];
-            Filesystem.writeFile({
-                path: filename,
-                data: base64Data,
-                directory: 'DOCUMENTS',
-            }).then(function () {
-                _setStatus('Imagen guardada en tus documentos.', false);
-            }).catch(function () {
-                _downloadWeb(filename);
+        // ── 1. Capacitor Filesystem → directorio PHOTOS (galería) ──────
+        if (Cap && Cap.isNativePlatform && Cap.isNativePlatform()
+            && Cap.Plugins && Cap.Plugins.Filesystem) {
+
+            var FS = Cap.Plugins.Filesystem;
+            FS.writeFile({
+                path:      filename,
+                data:      base64Data,
+                directory: 'PHOTOS',   // Requiere permiso WRITE_EXTERNAL_STORAGE en Android < 10
+            }).then(function (result) {
+                _setStatus('Imagen guardada en la galería.', false);
+                // En Android también intentamos agregar al media store
+                if (Cap.Plugins.Filesystem.stat) {
+                    // Notificar al sistema para que aparezca en galería (Android)
+                }
+            }).catch(function (err) {
+                console.warn('[share] Filesystem falló, intentando DOCUMENTS:', err);
+                // Segunda oportunidad: DOCUMENTS en lugar de PHOTOS
+                FS.writeFile({
+                    path:      filename,
+                    data:      base64Data,
+                    directory: 'DOCUMENTS',
+                }).then(function () {
+                    _setStatus('Imagen guardada en Documentos.', false);
+                }).catch(function () {
+                    _downloadWeb(filename);
+                });
             });
             return;
         }
 
-        // Descarga web estándar
+        // ── 2. Descarga web estándar ───────────────────────────────────
         _downloadWeb(filename);
     }
 
     function _downloadWeb(filename) {
         var a = document.createElement('a');
-        a.href = _currentDataURL;
+        a.href     = _currentDataURL;
         a.download = filename || 'resultado_domino.png';
         document.body.appendChild(a);
         a.click();
@@ -629,10 +751,10 @@
     }
 
     // ═════════════════════════════════════════════════════════════════
-    //  UTILIDADES INTERNAS
+    //  UTILIDADES
     // ═════════════════════════════════════════════════════════════════
 
-    function _drawRoundedRect(ctx, x, y, w, h, r) {
+    function _roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath();
         ctx.moveTo(x + r, y);
         ctx.lineTo(x + w - r, y);
@@ -646,31 +768,39 @@
         ctx.closePath();
     }
 
-    function _truncate(str, maxLen) {
+    function _formatTeamName(players) {
+        // Devuelve array [nombre1, nombre2_o_null]
+        if (!players) return ['Equipo', null];
+        var result = [players[0] || 'Jugador'];
+        result.push(players[1] || null);
+        return result;
+    }
+
+    function _truncate(str, max) {
         if (!str) return '';
-        return str.length > maxLen ? str.substring(0, maxLen - 1) + '…' : str;
+        return str.length > max ? str.substring(0, max - 1) + '\u2026' : str;
     }
 
     function _calcDuration(start, end) {
-        if (!start || !end) return '—';
+        if (!start || !end) return '\u2014';
         var ms = new Date(end) - new Date(start);
-        if (isNaN(ms) || ms < 0) return '—';
+        if (isNaN(ms) || ms < 0) return '\u2014';
         var mins = Math.round(ms / 60000);
+        if (mins < 1) return '< 1 min';
         if (mins < 60) return mins + ' min';
-        var h = Math.floor(mins / 60);
-        var m = mins % 60;
-        return h + 'h ' + m + 'm';
+        var h = Math.floor(mins / 60), m = mins % 60;
+        return h + 'h ' + (m ? m + 'm' : '');
     }
 
     function _formatShortDate(iso) {
-        if (!iso) return '—';
+        if (!iso) return '';
         var d = new Date(iso);
         return d.toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
     function _fileDate() {
         var d = new Date();
-        return d.getFullYear() + '' +
+        return d.getFullYear() +
             String(d.getMonth() + 1).padStart(2, '0') +
             String(d.getDate()).padStart(2, '0') + '_' +
             String(d.getHours()).padStart(2, '0') +
@@ -680,45 +810,36 @@
     function _getWinnerName(gd) {
         if (!gd) return 'El equipo';
         var players;
-        if (gd.winnerTeam && gd.winnerTeam.players) {
-            players = gd.winnerTeam.players;
-        } else if (gd.winner && gd.teams) {
-            players = gd.teams[gd.winner - 1].players;
-        }
-        if (!players) return 'El equipo';
+        if (gd.winnerTeam && gd.winnerTeam.players)  players = gd.winnerTeam.players;
+        else if (gd.winner && gd.teams)               players = gd.teams[gd.winner - 1].players;
+        if (!players || !players[0]) return 'El equipo';
         return players[0] + (players[1] ? ' y ' + players[1] : '');
     }
 
     function _showLoading(isLoading) {
-        var loader = document.getElementById('share-loader');
-        var content = document.getElementById('share-preview-wrap');
+        var loader  = document.getElementById('share-loader');
+        var preview = document.getElementById('share-preview-wrap');
         if (loader)  loader.classList.toggle('hidden', !isLoading);
-        if (content) content.classList.toggle('hidden', isLoading);
+        if (preview) preview.classList.toggle('hidden', isLoading);
         if (_btnShare) _btnShare.disabled = isLoading;
         if (_btnSave)  _btnSave.disabled  = isLoading;
     }
 
     function _setStatus(msg, isError) {
-        if (_shareStatus) {
-            _shareStatus.textContent = msg;
-            _shareStatus.style.color = isError ? '#ff6b6b' : '#2af0ff';
-            _shareStatus.classList.remove('hidden');
-            setTimeout(function () {
-                _shareStatus.classList.add('hidden');
-            }, 3500);
-        }
+        if (!_shareStatus) return;
+        _shareStatus.textContent = msg;
+        _shareStatus.style.color = isError ? '#ff5a5a' : '#2af0ff';
+        _shareStatus.classList.remove('hidden');
+        setTimeout(function () {
+            _shareStatus.classList.add('hidden');
+        }, 3800);
     }
 
     // ═════════════════════════════════════════════════════════════════
     //  EXPORTACIÓN GLOBAL
     // ═════════════════════════════════════════════════════════════════
 
-    window.DominoShare = {
-        init: init,
-        open: open,
-        close: close,
-    };
-
-    console.log('[share] Módulo DominoShare listo ✓');
+    window.DominoShare = { init: init, open: open, close: close };
+    console.log('[share] DominoShare v2 listo ✓');
 
 })();
