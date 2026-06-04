@@ -369,13 +369,14 @@
 
         ctx.restore();
 
-        _dividerH(ctx, W, topY + totalH + 26);
+        // Dibujar el divisor centrado en la brecha (612 a 720)
+        _dividerH(ctx, W, 666);
     }
 
     // ─── Feed Stats ──────────────────────────────────────────────────
 
     function _feedStats(ctx, gd, W) {
-        var topY = 660, PAD = 32, COLS = 4, GAP = 14;
+        var topY = 720, PAD = 32, COLS = 4, GAP = 14;
         var bW = Math.floor((W - PAD * 2 - GAP * (COLS - 1)) / COLS);
         var bH = 124, R = 16;
         var sv = _statsValues(gd);
@@ -505,7 +506,7 @@
         if (!dat) return;
 
         var PAD  = 60;
-        var topY = 430;
+        var topY = 410; // Subido ligeramente para dar aire al footer
 
         // ── Label "PARTIDA TERMINADA" ────────────────────────────────
         ctx.save();
@@ -513,19 +514,19 @@
         var tg = ctx.createLinearGradient(W / 2 - 300, 0, W / 2 + 300, 0);
         tg.addColorStop(0, C.neon2); tg.addColorStop(1, C.neon);
         ctx.fillStyle = tg;
-        ctx.font = '120px ' + F.display;
+        ctx.font = '110px ' + F.display; // Reducido ligeramente de 120px
         ctx.fillText('PARTIDA', W / 2, topY);
-        ctx.fillText('TERMINADA', W / 2, topY + 116);
+        ctx.fillText('TERMINADA', W / 2, topY + 100);
         ctx.restore();
 
         if (gd.isLisa) {
-            _lisaBadge(ctx, W / 2, topY + 166, 460);
+            _lisaBadge(ctx, W / 2, topY + 150, 460); // Ajustado de topY + 166
         }
 
-        var scoreTopY = gd.isLisa ? topY + 220 : topY + 166;
+        var scoreTopY = gd.isLisa ? topY + 200 : topY + 150; // Ajustado de 220/166
 
         // ── Bloque GANADOR (panel ancho) ────────────────────────────
-        var bH = 480, R = 28;
+        var bH = 440, R = 28; // Reducido de 480 a 440
         ctx.save();
         ctx.shadowColor = 'rgba(42,240,255,0.25)'; ctx.shadowBlur = 56;
         _rr(ctx, PAD, scoreTopY, W - PAD * 2, bH, R);
@@ -543,31 +544,31 @@
         ctx.strokeStyle = ag; ctx.lineWidth = 4; ctx.stroke();
 
         // Corona
-        _crown(ctx, W / 2, scoreTopY + 62, 28, C.gold);
+        _crown(ctx, W / 2, scoreTopY + 50, 26, C.gold); // Ajustado de 62 / 28
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.neon; ctx.font = '700 26px ' + F.body;
-        ctx.fillText('GANADOR', W / 2, scoreTopY + 116);
+        ctx.fillText('GANADOR', W / 2, scoreTopY + 100); // Ajustado de 116
 
         var wn = _fmtNames(dat.winner.players);
         ctx.fillStyle = C.white; ctx.font = '600 48px ' + F.body;
-        ctx.fillText(_trunc(wn[0], 20), W / 2, scoreTopY + 178);
+        ctx.fillText(_trunc(wn[0], 20), W / 2, scoreTopY + 155); // Ajustado de 178
         if (wn[1]) {
             ctx.fillStyle = C.dim; ctx.font = '400 36px ' + F.body;
-            ctx.fillText(_trunc(wn[1], 20), W / 2, scoreTopY + 224);
+            ctx.fillText(_trunc(wn[1], 20), W / 2, scoreTopY + 195); // Ajustado de 224
         }
 
         // Score masivo
         ctx.save();
         ctx.shadowColor = C.neon; ctx.shadowBlur = 48;
-        ctx.fillStyle = C.neon; ctx.font = '340px ' + F.display;
-        ctx.fillText(String(dat.winner.score), W / 2, scoreTopY + bH - 42);
+        ctx.fillStyle = C.neon; ctx.font = '310px ' + F.display; // Reducido de 340px
+        ctx.fillText(String(dat.winner.score), W / 2, scoreTopY + bH - 35); // Ajustado de bH - 42
         ctx.restore();
         ctx.restore();
 
         // ── Bloque PERDEDOR (panel secundario, debajo) ───────────────
-        var lTopY = scoreTopY + bH + 24;
-        var lH = 230;
+        var lTopY = scoreTopY + bH + 20; // Reducido gap de 24 a 20
+        var lH = 220; // Reducido de 230 a 220
         ctx.save();
         _rr(ctx, PAD, lTopY, W - PAD * 2, lH, R);
         var rg = ctx.createLinearGradient(PAD, lTopY, W - PAD, lTopY + lH);
@@ -578,37 +579,37 @@
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.red; ctx.font = '700 22px ' + F.body;
-        ctx.fillText('SEGUNDO LUGAR', W / 2, lTopY + 46);
+        ctx.fillText('SEGUNDO LUGAR', W / 2, lTopY + 40); // Ajustado de 46
 
         var ln = _fmtNames(dat.loser.players);
         ctx.fillStyle = C.dim; ctx.font = '500 36px ' + F.body;
-        ctx.fillText(_trunc(ln[0], 22) + (ln[1] ? '  &  ' + _trunc(ln[1], 14) : ''), W / 2, lTopY + 96);
+        ctx.fillText(_trunc(ln[0], 22) + (ln[1] ? '  &  ' + _trunc(ln[1], 14) : ''), W / 2, lTopY + 85); // Ajustado de 96
 
         ctx.save();
-        ctx.fillStyle = C.red; ctx.font = '120px ' + F.display;
-        ctx.fillText(String(dat.loser.score), W / 2 - 70, lTopY + 196);
-        ctx.fillStyle = 'rgba(255,90,90,0.40)'; ctx.font = '600 28px ' + F.body;
-        ctx.fillText('PTS', W / 2 + 80, lTopY + 186);
+        ctx.fillStyle = C.red; ctx.font = '110px ' + F.display; // Reducido de 120px
+        ctx.fillText(String(dat.loser.score), W / 2 - 70, lTopY + 185); // Ajustado de 196
+        ctx.fillStyle = 'rgba(255,90,90,0.40)'; ctx.font = '600 26px ' + F.body; // Reducido de 28px
+        ctx.fillText('PTS', W / 2 + 80, lTopY + 175); // Ajustado de 186
         ctx.restore();
 
         ctx.restore();
 
-        _dividerH(ctx, W, lTopY + lH + 36);
+        _dividerH(ctx, W, lTopY + lH + 25); // Reducido de 36 a 25
     }
 
     // ─── Story Stats ────────────────────────────────────────────────
 
     function _storyStats(ctx, gd, W) {
         var sv = _statsValues(gd);
-        var PAD = 60, GAP = 20;
+        var PAD = 60, GAP = 18; // Reducido de 20 a 18
         var COLS = 2;
         var bW = Math.floor((W - PAD * 2 - GAP) / COLS);
-        var bH = 180, R = 20;
+        var bH = 170, R = 20; // Reducido de 180 a 170
 
-        // Calcular topY dinámicamente basado en la historia
+        // Calcular topY dinámicamente basado en la historia rediseñada
         var dat = _extractTeams(gd);
-        var baseTopY = 430 + 166 + 480 + 24 + 230 + 36 + 32;
-        if (dat && gd.isLisa) baseTopY += 54;
+        var baseTopY = 410 + 150 + 440 + 20 + 220 + 25 + 25; // = 1290 (si no Lisa)
+        if (dat && gd.isLisa) baseTopY = 410 + 200 + 440 + 20 + 220 + 25 + 25; // = 1340 (si Lisa)
         var topY = baseTopY;
 
         var badges = [
@@ -636,11 +637,11 @@
             ctx.globalAlpha = 1;
 
             ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-            ctx.fillStyle = C.white; ctx.font = '700 68px ' + F.mono;
-            ctx.fillText(String(b.value), bx + bW / 2, by + 110);
+            ctx.fillStyle = C.white; ctx.font = '700 64px ' + F.mono; // Reducido de 68px
+            ctx.fillText(String(b.value), bx + bW / 2, by + 102); // Ajustado de 110
 
-            ctx.fillStyle = C.muted; ctx.font = '500 22px ' + F.body;
-            ctx.fillText(b.label, bx + bW / 2, by + 150);
+            ctx.fillStyle = C.muted; ctx.font = '500 20px ' + F.body; // Reducido de 22px
+            ctx.fillText(b.label, bx + bW / 2, by + 140); // Ajustado de 150
             ctx.restore();
         });
     }
