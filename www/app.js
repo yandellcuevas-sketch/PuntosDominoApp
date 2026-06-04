@@ -759,12 +759,21 @@ function registerPoints(pts, isCapi) {
         inputPts.blur();
     }
 
-    // Scroll suave hacia el marcador principal (tope de pantalla)
+    // Scroll suave hacia el marcador principal respetando el header sticky y safe areas
     setTimeout(() => {
-        if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        const header = document.querySelector('.game-topbar');
+        const scoreboard = document.querySelector('.scoreboard');
+        if (header && scoreboard) {
+            const headerHeight = header.offsetHeight;
+            const scoreboardTop = scoreboard.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0);
+            window.scrollTo({
+                top: scoreboardTop - headerHeight - 16, // 16px de respiro visual abajo del header
+                behavior: 'smooth'
+            });
+        } else if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    }, 100);
+    }, 150); // 150ms asegura la estabilización del viewport tras el cierre del teclado
 
     if (isCapi) soundCapicua(); else soundScore();
 
