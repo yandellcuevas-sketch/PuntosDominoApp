@@ -2229,4 +2229,62 @@ body {
   animation: spin 0.75s linear infinite;
   box-shadow: 0 0 16px rgba(42, 240, 255, 0.20);
 }
+
+/* ── Selector de formato Feed / Historia ─────────────────────────── */
+.share-format-selector {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 4px;
+}
+
+.share-fmt-option {
+  flex: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Ocultar el radio nativo */
+.share-fmt-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.share-fmt-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub, #9ba3b4);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: border-color 0.18s, background 0.18s, color 0.18s, box-shadow 0.18s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Estado seleccionado */
+.share-fmt-option input[type="radio"]:checked + .share-fmt-pill {
+  border-color: rgba(42, 240, 255, 0.55);
+  background: rgba(42, 240, 255, 0.09);
+  color: #2af0ff;
+  box-shadow: 0 0 12px rgba(42, 240, 255, 0.12);
+}
+
+.share-fmt-option:hover .share-fmt-pill {
+  border-color: rgba(42, 240, 255, 0.28);
+  color: var(--text, #eef0f6);
+}
+
+/* Preview de Historia: ratio 9:16 */
+.share-preview-img.story-ratio {
+  aspect-ratio: 9 / 16;
+  max-width: 213px;   /* 380px × (9/16) */
+}
 
