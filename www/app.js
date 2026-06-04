@@ -1131,9 +1131,32 @@ function renderHistoryList(items) {
         ${lisaTag}
         <span class="history-tag">${fmtDate(p.endTime)}</span>
       </div>
+      <div style="padding: 8px 0 4px;">
+        <button class="history-share-btn" data-match-id="${p.id}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Compartir
+        </button>
+      </div>
     </div>`;
     });
     container.innerHTML = html;
+
+    // Bind share buttons
+    container.querySelectorAll('.history-share-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var matchId = btn.getAttribute('data-match-id');
+            var entry = state.history.find(function (h) { return h.id === matchId; });
+            if (entry && typeof window.DominoShare !== 'undefined') {
+                window.DominoShare.open(entry);
+            }
+        });
+    });
 }
 
 // ─── History controls ─────────────────────────────────────────────
@@ -1575,6 +1598,7 @@ function init() {
     initEditModal();
     initProfileModal();
     initScannerButton();
+    initShareButton();
     updateSoundIcons();
     updateProfileUI();
 
@@ -1706,5 +1730,19 @@ function initScannerButton() {
         if (!state.game || state.game.status !== 'active') return;
         if (state.isSpectator) return;
         window.DominoScanner.open();
+    });
+}
+
+// ─── Share Button ─────────────────────────────────────────────────────
+function initShareButton() {
+    if (typeof window.DominoShare === 'undefined') return;
+    window.DominoShare.init();
+
+    var btn = $('btn-share-result');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+        if (!state.game) return;
+        window.DominoShare.open(state.game);
     });
 }
