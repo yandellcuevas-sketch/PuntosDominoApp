@@ -99,8 +99,10 @@ function showScreen(id) {
         target.classList.add('active');
     }
 
-    // Reset scroll position to top when changing screens
-    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+    // Reset scroll position when changing screens
+    if (id === 'screen-game') {
+        scrollToScoreboard(false); // Snap instantly to the scoreboard
+    } else if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
         window.scrollTo(0, 0);
     }
 
@@ -115,6 +117,24 @@ function showScreen(id) {
             }
         }
     }
+}
+
+function scrollToScoreboard(smooth = false) {
+    const header = document.querySelector('.game-topbar');
+    const scoreboard = document.querySelector('.scoreboard');
+    if (!scoreboard) return;
+
+    const performScroll = () => {
+        const headerHeight = header ? header.offsetHeight : 0;
+        const scoreboardTop = scoreboard.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0);
+        window.scrollTo({
+            top: scoreboardTop - headerHeight - 16, // 16px de margen para "aire" visual
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+    };
+
+    // Usar delay corto para permitir el reflow del DOM
+    setTimeout(performScroll, 50);
 }
 
 // ─── Persistencia ─────────────────────────────────────────────────
@@ -759,21 +779,10 @@ function registerPoints(pts, isCapi) {
         inputPts.blur();
     }
 
-    // Scroll suave hacia el marcador principal respetando el header sticky y safe areas
+    // Scroll suave al marcador principal tras la estabilización del teclado
     setTimeout(() => {
-        const header = document.querySelector('.game-topbar');
-        const scoreboard = document.querySelector('.scoreboard');
-        if (header && scoreboard) {
-            const headerHeight = header.offsetHeight;
-            const scoreboardTop = scoreboard.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0);
-            window.scrollTo({
-                top: scoreboardTop - headerHeight - 16, // 16px de respiro visual abajo del header
-                behavior: 'smooth'
-            });
-        } else if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, 150); // 150ms asegura la estabilización del viewport tras el cierre del teclado
+        scrollToScoreboard(true);
+    }, 150);
 
     if (isCapi) soundCapicua(); else soundScore();
 
