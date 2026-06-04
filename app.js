@@ -119,7 +119,7 @@ function showScreen(id) {
     }
 }
 
-function scrollToScoreboard(smooth = false) {
+function scrollToScoreboard(smooth = false, delay = 50) {
     const header = document.querySelector('.game-topbar');
     const scoreboard = document.querySelector('.scoreboard');
     if (!scoreboard) return;
@@ -133,8 +133,11 @@ function scrollToScoreboard(smooth = false) {
         });
     };
 
-    // Usar delay corto para permitir el reflow del DOM
-    setTimeout(performScroll, 50);
+    if (delay > 0) {
+        setTimeout(performScroll, delay);
+    } else {
+        performScroll();
+    }
 }
 
 // ─── Persistencia ─────────────────────────────────────────────────
@@ -779,10 +782,8 @@ function registerPoints(pts, isCapi) {
         inputPts.blur();
     }
 
-    // Scroll suave al marcador principal tras la estabilización del teclado
-    setTimeout(() => {
-        scrollToScoreboard(true);
-    }, 150);
+    // Scroll suave al marcador principal en paralelo con el colapso del teclado
+    scrollToScoreboard(true, 40);
 
     if (isCapi) soundCapicua(); else soundScore();
 
