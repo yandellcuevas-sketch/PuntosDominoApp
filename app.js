@@ -753,6 +753,19 @@ function registerPoints(pts, isCapi) {
     renderHands();
     updateStatusBadge();
 
+    // Ocultar teclado virtual retirando foco del input
+    const inputPts = $('manual-pts');
+    if (inputPts) {
+        inputPts.blur();
+    }
+
+    // Scroll suave hacia el marcador principal (tope de pantalla)
+    setTimeout(() => {
+        if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, 100);
+
     if (isCapi) soundCapicua(); else soundScore();
 
     if (won) {
