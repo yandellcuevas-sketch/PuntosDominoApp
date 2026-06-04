@@ -60,5 +60,9 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>DominoScorePro necesita acceso a tu Galería para guardar la tarjeta de resultado de la partida.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DominoScorePro accede a tu Galería para guardar las tarjetas de resultado de tus partidas.</string>
 </dict>
 </plist>
