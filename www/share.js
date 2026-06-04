@@ -210,7 +210,7 @@
         _bg(ctx, W, H, 'rgba(42,240,255,0.08)', 'rgba(0,148,255,0.05)');
         _border(ctx, W, H, 28, 'rgba(42,240,255,0.28)', 3);
         _feedHeader(ctx, gd, logo, W);
-        _dividerH(ctx, W, 96);
+        _dividerH(ctx, W, 112);
         _feedHeroScore(ctx, gd, W);
         _feedStats(ctx, gd, W);
         _footer(ctx, W, H);
@@ -221,7 +221,7 @@
     // ─── Feed Header ────────────────────────────────────────────────
 
     function _feedHeader(ctx, gd, logo, W) {
-        var PAD = 44, LOGO_D = 48, cy = 48;
+        var PAD = 44, LOGO_D = 72, cy = 58;
         var lx = PAD + LOGO_D / 2, ly = cy;
 
         ctx.save();
@@ -243,19 +243,19 @@
         }
         // Anillo
         ctx.beginPath();
-        ctx.arc(lx, ly, LOGO_D / 2 + 1, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(42,240,255,0.55)';
-        ctx.lineWidth = 1.5;
+        ctx.arc(lx, ly, LOGO_D / 2 + 1.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(42,240,255,0.60)';
+        ctx.lineWidth = 2;
         ctx.stroke();
 
         // App name
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.white;
-        ctx.font = '700 27px ' + F.body;
-        ctx.fillText('DOMINOSCORE PRO', W / 2, cy - 5);
+        ctx.font = '700 28px ' + F.body;
+        ctx.fillText('DOMINOSCORE PRO', W / 2, cy - 8);
         ctx.fillStyle = C.muted;
-        ctx.font = '400 15px ' + F.body;
-        ctx.fillText('Resultado Oficial de Partida', W / 2, cy + 16);
+        ctx.font = '400 16px ' + F.body;
+        ctx.fillText('Resultado Oficial de Partida', W / 2, cy + 18);
 
         // Fecha
         ctx.textAlign = 'right';
@@ -272,62 +272,62 @@
         var dat = _extractTeams(gd);
         if (!dat) return;
 
-        var topY  = 112;
-        var totalH = 500;
-        var GAP   = 16, PAD = 32;
-        var winW  = Math.round((W - PAD * 2 - GAP) * 0.62);
+        var topY  = 136;
+        var totalH = 550;
+        var GAP   = 20, PAD = 32;
+        var winW  = Math.round((W - PAD * 2 - GAP) * 0.63);
         var loseW = W - PAD * 2 - GAP - winW;
         var winX  = PAD, loseX = PAD + winW + GAP;
-        var R     = 22;
+        var R     = 24;
 
         // ─ Bloque GANADOR ──────────────────────────────────────────
         ctx.save();
-        ctx.shadowColor = 'rgba(42,240,255,0.22)';
-        ctx.shadowBlur  = 44;
+        ctx.shadowColor = 'rgba(42,240,255,0.25)';
+        ctx.shadowBlur  = 50;
         _rr(ctx, winX, topY, winW, totalH, R);
         var wg = ctx.createLinearGradient(winX, topY, winX, topY + totalH);
         wg.addColorStop(0, C.winBg1); wg.addColorStop(1, C.winBg2);
         ctx.fillStyle = wg; ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.shadowBlur = 0; // Reset shadow
 
         _rr(ctx, winX, topY, winW, totalH, R);
-        ctx.strokeStyle = C.winBorder; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.strokeStyle = C.winBorder; ctx.lineWidth = 2; ctx.stroke();
 
         // Acento top
         var ag = ctx.createLinearGradient(winX, 0, winX + winW, 0);
         ag.addColorStop(0, C.neon2); ag.addColorStop(1, C.neon);
         ctx.beginPath();
-        ctx.moveTo(winX + R, topY + 2); ctx.lineTo(winX + winW - R, topY + 2);
-        ctx.strokeStyle = ag; ctx.lineWidth = 3; ctx.stroke();
+        ctx.moveTo(winX + R, topY + 2.5); ctx.lineTo(winX + winW - R, topY + 2.5);
+        ctx.strokeStyle = ag; ctx.lineWidth = 3.5; ctx.stroke();
 
         // Corona
-        _crown(ctx, winX + winW / 2, topY + 56, 20, C.gold);
+        _crown(ctx, winX + winW / 2, topY + 60, 24, C.gold);
 
         // Etiqueta GANADOR
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.neon;
-        ctx.font = '700 17px ' + F.body;
-        ctx.fillText('GANADOR', winX + winW / 2, topY + 98);
+        ctx.font = '700 20px ' + F.body;
+        ctx.fillText('GANADOR', winX + winW / 2, topY + 110);
 
         // Nombres
         var wn = _fmtNames(dat.winner.players);
-        ctx.fillStyle = C.white; ctx.font = '600 30px ' + F.body;
-        ctx.fillText(_trunc(wn[0], 16), winX + winW / 2, topY + 148);
+        ctx.fillStyle = C.white; ctx.font = '600 32px ' + F.body;
+        ctx.fillText(_trunc(wn[0], 18), winX + winW / 2, topY + 165);
         if (wn[1]) {
-            ctx.fillStyle = C.dim; ctx.font = '400 22px ' + F.body;
-            ctx.fillText(_trunc(wn[1], 16), winX + winW / 2, topY + 180);
+            ctx.fillStyle = C.dim; ctx.font = '400 24px ' + F.body;
+            ctx.fillText(_trunc(wn[1], 18), winX + winW / 2, topY + 200);
         }
 
         // Score grande
         ctx.save();
-        ctx.shadowColor = C.neon; ctx.shadowBlur = 36;
+        ctx.shadowColor = C.neon; ctx.shadowBlur = 40;
         ctx.fillStyle = C.neon;
-        ctx.font = '250px ' + F.display;
-        ctx.fillText(String(dat.winner.score), winX + winW / 2, topY + 430);
+        ctx.font = '260px ' + F.display;
+        ctx.fillText(String(dat.winner.score), winX + winW / 2, topY + 460);
         ctx.restore();
         ctx.fillStyle = 'rgba(42,240,255,0.42)';
-        ctx.font = '700 20px ' + F.body;
-        ctx.fillText('PTS', winX + winW / 2, topY + 460);
+        ctx.font = '700 22px ' + F.body;
+        ctx.fillText('PTS', winX + winW / 2, topY + 495);
         ctx.restore();
 
         // ─ Bloque PERDEDOR ─────────────────────────────────────────
@@ -341,44 +341,45 @@
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         ctx.fillStyle = C.muted;
-        ctx.font = '400 18px ' + F.body;
-        ctx.fillText('2.\u00b0', loseX + loseW / 2, topY + 58);
+        ctx.font = '400 20px ' + F.body;
+        ctx.fillText('2.\u00b0', loseX + loseW / 2, topY + 68);
 
         ctx.fillStyle = C.red;
-        ctx.font = '700 15px ' + F.body;
-        ctx.fillText('SEGUNDO', loseX + loseW / 2, topY + 86);
+        ctx.font = '700 17px ' + F.body;
+        ctx.fillText('SEGUNDO', loseX + loseW / 2, topY + 98);
 
         var ln = _fmtNames(dat.loser.players);
-        ctx.fillStyle = C.dim; ctx.font = '500 22px ' + F.body;
-        ctx.fillText(_trunc(ln[0], 13), loseX + loseW / 2, topY + 126);
+        ctx.fillStyle = C.dim; ctx.font = '500 24px ' + F.body;
+        ctx.fillText(_trunc(ln[0], 14), loseX + loseW / 2, topY + 145);
         if (ln[1]) {
-            ctx.fillStyle = C.muted; ctx.font = '400 17px ' + F.body;
-            ctx.fillText(_trunc(ln[1], 13), loseX + loseW / 2, topY + 152);
+            ctx.fillStyle = C.muted; ctx.font = '400 18px ' + F.body;
+            ctx.fillText(_trunc(ln[1], 14), loseX + loseW / 2, topY + 175);
         }
 
         ctx.save();
         ctx.fillStyle = C.red;
-        ctx.font = '148px ' + F.display;
-        ctx.fillText(String(dat.loser.score), loseX + loseW / 2, topY + 400);
+        ctx.font = '160px ' + F.display;
+        ctx.fillText(String(dat.loser.score), loseX + loseW / 2, topY + 420);
         ctx.restore();
         ctx.fillStyle = 'rgba(255,90,90,0.38)';
-        ctx.font = '600 15px ' + F.body;
-        ctx.fillText('PTS', loseX + loseW / 2, topY + 426);
+        ctx.font = '600 16px ' + F.body;
+        ctx.fillText('PTS', loseX + loseW / 2, topY + 452);
 
-        if (gd.isLisa) _lisaBadge(ctx, loseX + loseW / 2, topY + totalH - 36, loseW - 24);
+        // Badge de juego si aplica
+        _gameBadge(ctx, loseX + loseW / 2, topY + totalH - 45, loseW - 24, gd);
 
         ctx.restore();
 
-        // Dibujar el divisor centrado en la brecha (612 a 720)
-        _dividerH(ctx, W, 666);
+        // Divider below Hero Score
+        _dividerH(ctx, W, 720);
     }
 
     // ─── Feed Stats ──────────────────────────────────────────────────
 
     function _feedStats(ctx, gd, W) {
-        var topY = 720, PAD = 32, COLS = 4, GAP = 14;
+        var topY = 756, PAD = 32, COLS = 4, GAP = 14;
         var bW = Math.floor((W - PAD * 2 - GAP * (COLS - 1)) / COLS);
-        var bH = 124, R = 16;
+        var bH = 150, R = 18;
         var sv = _statsValues(gd);
         var badges = [
             { label: 'DURACI\u00d3N', value: sv.dur,  accent: C.neon2 },
@@ -397,19 +398,19 @@
 
             // Línea de acento
             ctx.beginPath();
-            ctx.moveTo(bx + R, by + 2); ctx.lineTo(bx + bW - R, by + 2);
+            ctx.moveTo(bx + R, by + 2.5); ctx.lineTo(bx + bW - R, by + 2.5);
             ctx.strokeStyle = b.accent; ctx.globalAlpha = 0.65;
-            ctx.lineWidth = 2.5; ctx.stroke();
+            ctx.lineWidth = 3; ctx.stroke();
             ctx.globalAlpha = 1;
 
             ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = C.white;
-            ctx.font = '700 38px ' + F.mono;
-            ctx.fillText(String(b.value), bx + bW / 2, by + 72);
+            ctx.font = '700 44px ' + F.mono;
+            ctx.fillText(String(b.value), bx + bW / 2, by + 86);
 
             ctx.fillStyle = C.muted;
-            ctx.font = '500 13px ' + F.body;
-            ctx.fillText(b.label, bx + bW / 2, by + 100);
+            ctx.font = '700 14px ' + F.body;
+            ctx.fillText(b.label, bx + bW / 2, by + 120);
             ctx.restore();
         });
     }
@@ -467,7 +468,7 @@
     // ─── Story Header ───────────────────────────────────────────────
 
     function _storyHeader(ctx, gd, logo, W) {
-        var cy = 180, LOGO_D = 100;
+        var cy = 135, LOGO_D = 100;
         var lx = W / 2, ly = cy;
 
         ctx.save();
@@ -490,12 +491,16 @@
 
         // App name
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = C.white; ctx.font = '700 48px ' + F.body;
+        ctx.fillStyle = C.white; ctx.font = '700 44px ' + F.body;
         ctx.fillText('DOMINOSCORE PRO', W / 2, cy + LOGO_D / 2 + 58);
         ctx.fillStyle = C.dim; ctx.font = '400 28px ' + F.body;
         ctx.fillText('Resultado Oficial de Partida', W / 2, cy + LOGO_D / 2 + 100);
 
-        _dividerH(ctx, W, cy + LOGO_D / 2 + 128);
+        // Fecha (centrada para evitar saturación lateral)
+        ctx.fillStyle = C.dim; ctx.font = '500 24px ' + F.mono;
+        ctx.fillText(_fmtShortDate(gd.endTime), W / 2, cy + LOGO_D / 2 + 140);
+
+        _dividerH(ctx, W, cy + LOGO_D / 2 + 175);
         ctx.restore();
     }
 
@@ -506,27 +511,25 @@
         if (!dat) return;
 
         var PAD  = 60;
-        var topY = 410; // Subido ligeramente para dar aire al footer
+        var hasBadge = gd.isLisa;
+        var titleY = hasBadge ? 410 : 440;
+        var scoreTopY = hasBadge ? 550 : 485;
 
-        // ── Label "PARTIDA TERMINADA" ────────────────────────────────
+        // ── Label "PARTIDA COMPLETADA" ──────────────────────────────
         ctx.save();
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         var tg = ctx.createLinearGradient(W / 2 - 300, 0, W / 2 + 300, 0);
         tg.addColorStop(0, C.neon2); tg.addColorStop(1, C.neon);
         ctx.fillStyle = tg;
-        ctx.font = '110px ' + F.display; // Reducido ligeramente de 120px
-        ctx.fillText('PARTIDA', W / 2, topY);
-        ctx.fillText('TERMINADA', W / 2, topY + 100);
+        ctx.font = '700 52px ' + F.body;
+        ctx.fillText('PARTIDA COMPLETADA', W / 2, titleY);
         ctx.restore();
 
-        if (gd.isLisa) {
-            _lisaBadge(ctx, W / 2, topY + 150, 460); // Ajustado de topY + 166
-        }
+        // Dibujar Badge de Logros dinámico si aplica
+        _gameBadge(ctx, W / 2, titleY + 60, 500, gd);
 
-        var scoreTopY = gd.isLisa ? topY + 200 : topY + 150; // Ajustado de 220/166
-
-        // ── Bloque GANADOR (panel ancho) ────────────────────────────
-        var bH = 440, R = 28; // Reducido de 480 a 440
+        // ── Bloque GANADOR (panel ancho heroico) ─────────────────────
+        var bH = 490, R = 28;
         ctx.save();
         ctx.shadowColor = 'rgba(42,240,255,0.25)'; ctx.shadowBlur = 56;
         _rr(ctx, PAD, scoreTopY, W - PAD * 2, bH, R);
@@ -544,31 +547,40 @@
         ctx.strokeStyle = ag; ctx.lineWidth = 4; ctx.stroke();
 
         // Corona
-        _crown(ctx, W / 2, scoreTopY + 50, 26, C.gold); // Ajustado de 62 / 28
+        _crown(ctx, W / 2, scoreTopY + 50, 26, C.gold);
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = C.neon; ctx.font = '700 26px ' + F.body;
-        ctx.fillText('GANADOR', W / 2, scoreTopY + 100); // Ajustado de 116
+        ctx.fillStyle = C.neon; ctx.font = '700 24px ' + F.body;
+        ctx.fillText('GANADOR', W / 2, scoreTopY + 105);
 
         var wn = _fmtNames(dat.winner.players);
         ctx.fillStyle = C.white; ctx.font = '600 48px ' + F.body;
-        ctx.fillText(_trunc(wn[0], 20), W / 2, scoreTopY + 155); // Ajustado de 178
+        ctx.fillText(_trunc(wn[0], 20), W / 2, scoreTopY + 165);
         if (wn[1]) {
             ctx.fillStyle = C.dim; ctx.font = '400 36px ' + F.body;
-            ctx.fillText(_trunc(wn[1], 20), W / 2, scoreTopY + 195); // Ajustado de 224
+            ctx.fillText(_trunc(wn[1], 20), W / 2, scoreTopY + 205);
         }
 
-        // Score masivo
+        // Score dinámico masivo
+        var scoreStr = String(dat.winner.score);
+        var baseSize = 380;
+        if (scoreStr.length > 3) baseSize = 250;
+        else if (scoreStr.length === 3) baseSize = 320;
+
         ctx.save();
         ctx.shadowColor = C.neon; ctx.shadowBlur = 48;
-        ctx.fillStyle = C.neon; ctx.font = '310px ' + F.display; // Reducido de 340px
-        ctx.fillText(String(dat.winner.score), W / 2, scoreTopY + bH - 35); // Ajustado de bH - 42
-        ctx.restore();
+        ctx.fillStyle = C.neon; ctx.font = '250 ' + baseSize + 'px ' + F.display;
+        ctx.fillText(scoreStr, W / 2, scoreTopY + bH - 45);
         ctx.restore();
 
-        // ── Bloque PERDEDOR (panel secundario, debajo) ───────────────
-        var lTopY = scoreTopY + bH + 20; // Reducido gap de 24 a 20
-        var lH = 220; // Reducido de 230 a 220
+        ctx.fillStyle = 'rgba(42,240,255,0.42)';
+        ctx.font = '700 24px ' + F.body;
+        ctx.fillText('PTS', W / 2, scoreTopY + bH - 15);
+        ctx.restore();
+
+        // ── Bloque PERDEDOR (diseño de barra compacta y subordinada) ────
+        var lTopY = scoreTopY + bH + 20;
+        var lH = 130;
         ctx.save();
         _rr(ctx, PAD, lTopY, W - PAD * 2, lH, R);
         var rg = ctx.createLinearGradient(PAD, lTopY, W - PAD, lTopY + lH);
@@ -577,40 +589,47 @@
         _rr(ctx, PAD, lTopY, W - PAD * 2, lH, R);
         ctx.strokeStyle = C.loseBorder; ctx.lineWidth = 1.5; ctx.stroke();
 
-        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = C.red; ctx.font = '700 22px ' + F.body;
-        ctx.fillText('SEGUNDO LUGAR', W / 2, lTopY + 40); // Ajustado de 46
+        // Texto Izquierda: Nombres y etiqueta oponente
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = C.red; ctx.font = '700 20px ' + F.body;
+        ctx.fillText('SEGUNDO LUGAR', PAD + 40, lTopY + 48);
 
         var ln = _fmtNames(dat.loser.players);
-        ctx.fillStyle = C.dim; ctx.font = '500 36px ' + F.body;
-        ctx.fillText(_trunc(ln[0], 22) + (ln[1] ? '  &  ' + _trunc(ln[1], 14) : ''), W / 2, lTopY + 85); // Ajustado de 96
+        var lnText = _trunc(ln[0], 22) + (ln[1] ? '  &  ' + _trunc(ln[1], 14) : '');
+        ctx.fillStyle = C.dim; ctx.font = '600 32px ' + F.body;
+        ctx.fillText(lnText, PAD + 40, lTopY + 92);
 
-        ctx.save();
-        ctx.fillStyle = C.red; ctx.font = '110px ' + F.display; // Reducido de 120px
-        ctx.fillText(String(dat.loser.score), W / 2 - 70, lTopY + 185); // Ajustado de 196
-        ctx.fillStyle = 'rgba(255,90,90,0.40)'; ctx.font = '600 26px ' + F.body; // Reducido de 28px
-        ctx.fillText('PTS', W / 2 + 80, lTopY + 175); // Ajustado de 186
+        // Texto Derecha: Puntuación compacta
+        ctx.textAlign = 'right';
+        ctx.font = '600 22px ' + F.body;
+        ctx.fillStyle = 'rgba(255,90,90,0.5)';
+        ctx.fillText('PTS', W - PAD - 40, lTopY + 82);
+
+        var lScoreStr = String(dat.loser.score);
+        ctx.font = '700 80px ' + F.display;
+        ctx.fillStyle = C.red;
+        ctx.fillText(lScoreStr, W - PAD - 105, lTopY + 92);
+
         ctx.restore();
 
-        ctx.restore();
-
-        _dividerH(ctx, W, lTopY + lH + 25); // Reducido de 36 a 25
+        // Divider
+        _dividerH(ctx, W, lTopY + lH + 30);
     }
 
     // ─── Story Stats ────────────────────────────────────────────────
 
     function _storyStats(ctx, gd, W) {
         var sv = _statsValues(gd);
-        var PAD = 60, GAP = 18; // Reducido de 20 a 18
+        var PAD = 60, GAP = 24;
         var COLS = 2;
         var bW = Math.floor((W - PAD * 2 - GAP) / COLS);
-        var bH = 170, R = 20; // Reducido de 180 a 170
+        var bH = 160, R = 20; // 160px height variant chosen for optimal visual balance
 
-        // Calcular topY dinámicamente basado en la historia rediseñada
-        var dat = _extractTeams(gd);
-        var baseTopY = 410 + 150 + 440 + 20 + 220 + 25 + 25; // = 1290 (si no Lisa)
-        if (dat && gd.isLisa) baseTopY = 410 + 200 + 440 + 20 + 220 + 25 + 25; // = 1340 (si Lisa)
-        var topY = baseTopY;
+        // Dynamic topY based on whether we shifted the layout for the Lisa badge
+        var hasBadge = gd.isLisa;
+        var scoreTopY = hasBadge ? 550 : 485;
+        var loseTopY = scoreTopY + 490 + 20;
+        var topY = loseTopY + 130 + 40;
 
         var badges = [
             { label: 'DURACI\u00d3N',  value: sv.dur,   accent: C.neon2 },
@@ -619,29 +638,40 @@
             { label: 'L\u00cdMITE',    value: sv.limit, accent: C.dim   },
         ];
 
-        // 2 columnas × 2 filas
         badges.forEach(function (b, i) {
             var col = i % COLS, row = Math.floor(i / COLS);
             var bx = PAD + col * (bW + GAP);
             var by = topY + row * (bH + GAP);
+
             ctx.save();
+            // Shadow for depth
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            ctx.shadowBlur = 16;
+            ctx.shadowOffsetY = 8;
             _rr(ctx, bx, by, bW, bH, R);
             ctx.fillStyle = C.statBg; ctx.fill();
-            _rr(ctx, bx, by, bW, bH, R);
-            ctx.strokeStyle = C.statBorder; ctx.lineWidth = 1; ctx.stroke();
+            ctx.shadowColor = 'transparent'; // Reset shadow
 
+            _rr(ctx, bx, by, bW, bH, R);
+            ctx.strokeStyle = C.statBorder; ctx.lineWidth = 1.5; ctx.stroke();
+
+            // Accent top line
             ctx.beginPath();
             ctx.moveTo(bx + R, by + 3); ctx.lineTo(bx + bW - R, by + 3);
             ctx.strokeStyle = b.accent; ctx.globalAlpha = 0.70;
             ctx.lineWidth = 3.5; ctx.stroke();
             ctx.globalAlpha = 1;
 
+            // Value (Large)
             ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-            ctx.fillStyle = C.white; ctx.font = '700 64px ' + F.mono; // Reducido de 68px
-            ctx.fillText(String(b.value), bx + bW / 2, by + 102); // Ajustado de 110
+            ctx.fillStyle = C.white;
+            ctx.font = '700 72px ' + F.mono;
+            ctx.fillText(String(b.value), bx + bW / 2, by + 92);
 
-            ctx.fillStyle = C.muted; ctx.font = '500 20px ' + F.body; // Reducido de 22px
-            ctx.fillText(b.label, bx + bW / 2, by + 140); // Ajustado de 150
+            // Label (Clean)
+            ctx.fillStyle = C.muted;
+            ctx.font = '700 18px ' + F.body;
+            ctx.fillText(b.label, bx + bW / 2, by + 132);
             ctx.restore();
         });
     }
@@ -650,14 +680,16 @@
 
     function _storyCTA(ctx, W, H) {
         var y = H - 100;
-        _dividerH(ctx, W, y - 32);
+        _dividerH(ctx, W, y - 36);
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = C.dim; ctx.font = '400 28px ' + F.body;
-        ctx.fillText('dominoscore.app  ·  iOS & Android', W / 2, y - 4);
+        ctx.fillStyle = C.neon;
+        ctx.font = '700 32px ' + F.body;
+        ctx.fillText('DOMINOSCORE.APP', W / 2, y + 4);
 
-        ctx.fillStyle = C.muted; ctx.font = '400 22px ' + F.body;
-        ctx.fillText('Registra tus partidas de domino', W / 2, y + 30);
+        ctx.fillStyle = C.muted;
+        ctx.font = '500 20px ' + F.body;
+        ctx.fillText('Registra tus partidas de domin\u00f3', W / 2, y + 38);
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -681,6 +713,7 @@
         ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
     }
 
+    // Nota: El divisor horizontal usa un gradiente sutil
     function _dividerH(ctx, W, y) {
         var grad = ctx.createLinearGradient(60, 0, W - 60, 0);
         grad.addColorStop(0, 'transparent');
@@ -693,11 +726,16 @@
     }
 
     function _footer(ctx, W, H) {
-        var y = H - 30;
-        _dividerH(ctx, W, y - 22);
+        var y = H - 55;
+        _dividerH(ctx, W, 970);
         ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = C.muted; ctx.font = '400 17px ' + F.body;
-        ctx.fillText('DominoScorePro  \u00b7  dominoscore.app  \u00b7  iOS & Android', W / 2, y);
+        ctx.fillStyle = C.neon;
+        ctx.font = '700 24px ' + F.body;
+        ctx.fillText('DOMINOSCORE.APP', W / 2, y);
+
+        ctx.fillStyle = C.muted;
+        ctx.font = '500 16px ' + F.body;
+        ctx.fillText('Registra tus partidas de domin\u00f3  \u00b7  iOS & Android', W / 2, y + 26);
     }
 
     function _rr(ctx, x, y, w, h, r) {
@@ -740,16 +778,22 @@
         ctx.restore();
     }
 
-    function _lisaBadge(ctx, cx, cy, maxW) {
-        var bw = Math.min(maxW, 380), bh = 50;
+    function _gameBadge(ctx, cx, cy, maxW, gd) {
+        if (!gd.isLisa) return; // Only show badge for a Lisa victory (rival with 0 score)
+
+        var text = 'LISAAA  \u00b7  RIVAL EN 0';
+        var c1 = '#f0b429', c2 = '#e08000', tc = '#07080d';
+
+        var bw = Math.min(maxW, 460), bh = 54;
         ctx.save();
-        _rr(ctx, cx - bw / 2, cy - bh / 2, bw, bh, 25);
+        _rr(ctx, cx - bw / 2, cy - bh / 2, bw, bh, 27);
         var g = ctx.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0);
-        g.addColorStop(0, '#f0b429'); g.addColorStop(1, '#e08000');
+        g.addColorStop(0, c1); g.addColorStop(1, c2);
         ctx.fillStyle = g; ctx.fill();
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#07080d'; ctx.font = '700 21px ' + F.body;
-        ctx.fillText('LISAAA  \u00b7  RIVAL EN 0', cx, cy);
+        ctx.fillStyle = tc;
+        ctx.font = '700 20px ' + F.body;
+        ctx.fillText(text, cx, cy);
         ctx.restore();
     }
 
