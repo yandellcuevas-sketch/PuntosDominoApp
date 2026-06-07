@@ -1254,7 +1254,7 @@ function renderStatsExtended() {
         const end = new Date(p.endTime);
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return max;
         const duration = end.getTime() - start.getTime();
-        if (duration <= 0) return max;
+        if (duration < 60000) return max; // Ignorar partidas de menos de 1 minuto o duraciones erróneas
         return duration > max.val ? { val: duration, match: p } : max;
     }, { val: -1, match: null });
 
