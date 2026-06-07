@@ -1189,19 +1189,20 @@ function renderStatsExtended() {
         }
     });
 
-    const couples = Object.values(coupleMap).filter(c => (c.wins + c.losses) >= 3);
-    
-    couples.forEach(c => {
-        const total = c.wins + c.losses;
-        c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
-    });
+    const couples = Object.values(coupleMap)
+        .map(c => {
+            const total = c.wins + c.losses;
+            c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
+            return c;
+        })
+        .filter(c => (c.wins + c.losses) >= 3 && c.pct > 50);
 
     couples.sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
         return b.pct - a.pct;
     });
 
-    const showParejas = couples.length > 0 && couples[0].pct >= 50;
+    const showParejas = couples.length > 0;
 
     if (showParejas) {
         const topCouples = couples.slice(0, 3);
