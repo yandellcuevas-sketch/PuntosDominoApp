@@ -1086,19 +1086,6 @@ function renderStats() {
     $('stat-total').textContent = h.length;
     $('stat-capis').textContent = h.reduce((a, p) => a + (p.capicuas || 0), 0);
     $('stat-lisas').textContent = h.filter(p => p.isLisa).length;
-
-    // MVP: player with most wins
-    const wins = {};
-    h.forEach(p => {
-        if (p.winnerTeam && p.winnerTeam.players) {
-            p.winnerTeam.players.forEach(pl => {
-                wins[pl] = (wins[pl] || 0) + 1;
-            });
-        }
-    });
-    let mvp = '—', mvpW = 0;
-    Object.entries(wins).forEach(([pl, w]) => { if (w > mvpW) { mvp = pl.split(' ')[0]; mvpW = w; } });
-    $('stat-mvp').textContent = mvp;
 }
 
 function renderStatsExtended() {
@@ -1181,7 +1168,7 @@ function renderStatsExtended() {
         }
     });
 
-    const couples = Object.values(coupleMap);
+    const couples = Object.values(coupleMap).filter(c => (c.wins + c.losses) >= 3);
     if (couples.length > 0) {
         couples.forEach(c => {
             const total = c.wins + c.losses;
@@ -1276,7 +1263,7 @@ function renderStatsExtended() {
         recordsHtml += `
             <div class="stats-ext-record-card">
                 <div class="stats-ext-record-val">${maxDiffMatch.val} pts</div>
-                <div class="stats-ext-record-lbl">Mayor diferencia</div>
+                <div class="stats-ext-record-lbl">Victoria Más Amplia</div>
             </div>
         `;
     }
@@ -1286,7 +1273,7 @@ function renderStatsExtended() {
         recordsHtml += `
             <div class="stats-ext-record-card">
                 <div class="stats-ext-record-val">${maxHandsMatch.val} manos</div>
-                <div class="stats-ext-record-lbl">Más manos</div>
+                <div class="stats-ext-record-lbl">Partida Más Disputada</div>
             </div>
         `;
     }
