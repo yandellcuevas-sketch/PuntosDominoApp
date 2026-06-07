@@ -1141,7 +1141,7 @@ function renderStatsExtended() {
                     <line x1="8" y1="2" x2="8" y2="6"/>
                     <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                <span>Hoy</span>
+                <span>Actividad del día</span>
             </div>
             <div class="stats-ext-hoy-grid">
                 <div class="stat-card">
@@ -1190,17 +1190,20 @@ function renderStatsExtended() {
     });
 
     const couples = Object.values(coupleMap).filter(c => (c.wins + c.losses) >= 3);
-    if (couples.length > 0) {
-        couples.forEach(c => {
-            const total = c.wins + c.losses;
-            c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
-        });
+    
+    couples.forEach(c => {
+        const total = c.wins + c.losses;
+        c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
+    });
 
-        couples.sort((a, b) => {
-            if (b.wins !== a.wins) return b.wins - a.wins;
-            return b.pct - a.pct;
-        });
+    couples.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.pct - a.pct;
+    });
 
+    const showParejas = couples.length > 0 && couples[0].pct >= 50;
+
+    if (showParejas) {
         const topCouples = couples.slice(0, 3);
         let couplesHtml = `
             <div class="stats-ext-header">
@@ -1342,25 +1345,35 @@ function applyHistoryFilters() {
     } else {
         if (filter === 'won') {
             items = items.filter(p => {
-                if (state.profile.playerId && p.winnerTeam.playerIds && p.winnerTeam.playerIds.includes(state.profile.playerId)) {
-                    return true;
+                const hasPlayerIds = p.winnerTeam.playerIds && p.winnerTeam.playerIds.length > 0;
+                if (hasPlayerIds) {
+                    return state.profile.playerId && p.winnerTeam.playerIds.includes(state.profile.playerId);
+                } else {
+                    const aliases = (state.profile.aliases || []).map(a => a.trim().toLowerCase());
+                    if (state.profile.username) {
+                        const u = state.profile.username.trim().toLowerCase();
+                        if (!aliases.includes(u)) {
+                            aliases.push(u);
+                        }
+                    }
+                    return p.winnerTeam.players.some(n => aliases.includes(n.trim().toLowerCase()));
                 }
-                if (state.profile.username) {
-                    const u = state.profile.username.trim().toLowerCase();
-                    return p.winnerTeam.players.some(n => n.trim().toLowerCase() === u);
-                }
-                return false;
             });
         } else if (filter === 'lost') {
             items = items.filter(p => {
-                if (state.profile.playerId && p.loserTeam.playerIds && p.loserTeam.playerIds.includes(state.profile.playerId)) {
-                    return true;
+                const hasPlayerIds = p.loserTeam.playerIds && p.loserTeam.playerIds.length > 0;
+                if (hasPlayerIds) {
+                    return state.profile.playerId && p.loserTeam.playerIds.includes(state.profile.playerId);
+                } else {
+                    const aliases = (state.profile.aliases || []).map(a => a.trim().toLowerCase());
+                    if (state.profile.username) {
+                        const u = state.profile.username.trim().toLowerCase();
+                        if (!aliases.includes(u)) {
+                            aliases.push(u);
+                        }
+                    }
+                    return p.loserTeam.players.some(n => aliases.includes(n.trim().toLowerCase()));
                 }
-                if (state.profile.username) {
-                    const u = state.profile.username.trim().toLowerCase();
-                    return p.loserTeam.players.some(n => n.trim().toLowerCase() === u);
-                }
-                return false;
             });
         }
     }
@@ -1975,8 +1988,29 @@ function initProfileModal() {
         const selectedOpt = document.querySelector('.avatar-option.selected');
         const avatar = selectedOpt ? selectedOpt.dataset.emoji : '👤';
 
+        if (!state.profile.aliases) {
+            state.profile.aliases = [];
+        }
+        if (state.profile.username) {
+            const oldLower = state.profile.username.trim().toLowerCase();
+            if (!state.profile.aliases.map(a => a.trim().toLowerCase()).includes(oldLower)) {
+                state.profile.aliases.push(state.profile.username);
+            }
+        }
+
         state.profile.username = username;
         state.profile.avatar = avatar;
+
+        if (username) {
+            const newLower = username.toLowerCase().trim();
+            if (!state.profile.aliases.map(a => a.trim().toLowerCase()).includes(newLower)) {
+                state.profile.aliases.push(username);
+            }
+        }
+
+        if (state.profile.aliases.length > 5) {
+            state.profile.aliases = state.profile.aliases.slice(-5);
+        }
 
         // Guardar localmente primero (siempre funciona)
         localSaveProfile(state.profile);

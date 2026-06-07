@@ -178,6 +178,18 @@
             migrated = true;
         }
 
+        // Migración silenciosa de aliases
+        if (!profile.aliases) {
+            profile.aliases = [];
+            if (profile.username) {
+                profile.aliases.push(profile.username);
+            }
+            migrated = true;
+        } else if (profile.aliases.length > 5) {
+            profile.aliases = profile.aliases.slice(-5);
+            migrated = true;
+        }
+
         if (migrated) {
             _write(_KEYS.PROFILE, profile);
         }
@@ -199,7 +211,7 @@
 
     /**
      * Carga solo el perfil del usuario.
-     * @returns {{ username: string, avatar: string, playerId: string }}
+     * @returns {{ username: string, avatar: string, playerId: string, aliases: Array }}
      */
     function localLoadProfile() {
         var p = _read(_KEYS.PROFILE, _DEFAULT_SETTINGS.profile);
@@ -210,6 +222,18 @@
         var migrated = false;
         if (!p.playerId) {
             p.playerId = _generatePlayerId();
+            migrated = true;
+        }
+
+        // Migración silenciosa de aliases
+        if (!p.aliases) {
+            p.aliases = [];
+            if (p.username) {
+                p.aliases.push(p.username);
+            }
+            migrated = true;
+        } else if (p.aliases.length > 5) {
+            p.aliases = p.aliases.slice(-5);
             migrated = true;
         }
 
