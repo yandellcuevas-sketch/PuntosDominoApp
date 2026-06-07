@@ -53,6 +53,21 @@
         }
     }
 
+    // ── Helper para generar playerId local ────────────────────────────
+    function _generatePlayerId() {
+        try {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return 'usr_' + crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+            }
+        } catch (e) {}
+        var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        var rnd = '';
+        for (var i = 0; i < 16; i++) {
+            rnd += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return 'usr_' + rnd;
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  PARTIDA ACTIVA
     // ════════════════════════════════════════════════════════════════
@@ -156,6 +171,17 @@
         if (!profile || typeof profile !== 'object') profile = _DEFAULT_SETTINGS.profile;
         if (!profile.avatar) profile.avatar = '👤';
 
+        // Migración silenciosa de playerId
+        var migrated = false;
+        if (!profile.playerId) {
+            profile.playerId = _generatePlayerId();
+            migrated = true;
+        }
+
+        if (migrated) {
+            _write(_KEYS.PROFILE, profile);
+        }
+
         return {
             soundEnabled : soundEnabled,
             profile      : profile,
@@ -173,11 +199,24 @@
 
     /**
      * Carga solo el perfil del usuario.
-     * @returns {{ username: string, avatar: string }}
+     * @returns {{ username: string, avatar: string, playerId: string }}
      */
     function localLoadProfile() {
         var p = _read(_KEYS.PROFILE, _DEFAULT_SETTINGS.profile);
-        if (!p || typeof p !== 'object') return _DEFAULT_SETTINGS.profile;
+        if (!p || typeof p !== 'object') p = _DEFAULT_SETTINGS.profile;
+        if (!p.avatar) p.avatar = '👤';
+
+        // Migración silenciosa de playerId
+        var migrated = false;
+        if (!p.playerId) {
+            p.playerId = _generatePlayerId();
+            migrated = true;
+        }
+
+        if (migrated) {
+            _write(_KEYS.PROFILE, p);
+        }
+
         return p;
     }
 
