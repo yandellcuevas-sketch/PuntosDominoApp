@@ -1190,17 +1190,20 @@ function renderStatsExtended() {
     });
 
     const couples = Object.values(coupleMap).filter(c => (c.wins + c.losses) >= 3);
-    if (couples.length > 0) {
-        couples.forEach(c => {
-            const total = c.wins + c.losses;
-            c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
-        });
+    
+    couples.forEach(c => {
+        const total = c.wins + c.losses;
+        c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
+    });
 
-        couples.sort((a, b) => {
-            if (b.wins !== a.wins) return b.wins - a.wins;
-            return b.pct - a.pct;
-        });
+    couples.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.pct - a.pct;
+    });
 
+    const showParejas = couples.length > 0 && couples[0].pct >= 50;
+
+    if (showParejas) {
         const topCouples = couples.slice(0, 3);
         let couplesHtml = `
             <div class="stats-ext-header">
