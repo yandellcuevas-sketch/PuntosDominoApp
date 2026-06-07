@@ -1235,12 +1235,6 @@ function renderStatsExtended() {
         return wScore > max.val ? { val: wScore, match: p } : max;
     }, { val: -1, match: null });
 
-    // Mayor diferencia
-    const maxDiffMatch = recordsHistory.reduce((max, p) => {
-        const diff = Math.abs((p.winnerTeam.score || 0) - (p.loserTeam.score || 0));
-        return diff > max.val ? { val: diff, match: p } : max;
-    }, { val: -1, match: null });
-
     // Partida más larga
     const maxDurationMatch = recordsHistory.reduce((max, p) => {
         if (!p.startTime || !p.endTime) return max;
@@ -1271,16 +1265,6 @@ function renderStatsExtended() {
             <div class="stats-ext-record-card">
                 <div class="stats-ext-record-val">${maxScoreMatch.val} PTS</div>
                 <div class="stats-ext-record-lbl">Mayor Puntuación</div>
-            </div>
-        `;
-    }
-
-    if (maxDiffMatch.val >= 0 && maxDiffMatch.match) {
-        recordCount++;
-        recordsHtml += `
-            <div class="stats-ext-record-card">
-                <div class="stats-ext-record-val">${maxDiffMatch.val} PTS</div>
-                <div class="stats-ext-record-lbl">Mayor Diferencia</div>
             </div>
         `;
     }
