@@ -1141,7 +1141,7 @@ function renderStatsExtended() {
                     <line x1="8" y1="2" x2="8" y2="6"/>
                     <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                <span>Hoy</span>
+                <span>Actividad del día</span>
             </div>
             <div class="stats-ext-hoy-grid">
                 <div class="stat-card">
