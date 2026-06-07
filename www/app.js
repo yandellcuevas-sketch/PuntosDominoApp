@@ -1221,21 +1221,28 @@ function renderStatsExtended() {
     }
 
     // 3. Calcular SALÓN DE RÉCORDS
+    // Filtrar partidas para ignorar aquellas con puntuaciones absurdas (> 500)
+    const recordsHistory = h.filter(p => {
+        if (!p.winnerTeam || !p.loserTeam) return false;
+        const wScore = p.winnerTeam.score || 0;
+        const lScore = p.loserTeam.score || 0;
+        return wScore <= 500 && lScore <= 500;
+    });
+
+    // Mayor puntuación
+    const maxScoreMatch = recordsHistory.reduce((max, p) => {
+        const wScore = p.winnerTeam.score || 0;
+        return wScore > max.val ? { val: wScore, match: p } : max;
+    }, { val: -1, match: null });
+
     // Mayor diferencia
-    const maxDiffMatch = h.reduce((max, p) => {
-        if (!p.winnerTeam || !p.loserTeam) return max;
-        const diff = Math.abs(p.winnerTeam.score - p.loserTeam.score);
+    const maxDiffMatch = recordsHistory.reduce((max, p) => {
+        const diff = Math.abs((p.winnerTeam.score || 0) - (p.loserTeam.score || 0));
         return diff > max.val ? { val: diff, match: p } : max;
     }, { val: -1, match: null });
 
-    // Más manos
-    const maxHandsMatch = h.reduce((max, p) => {
-        const hands = p.hands || 0;
-        return hands > max.val ? { val: hands, match: p } : max;
-    }, { val: -1, match: null });
-
     // Partida más larga
-    const maxDurationMatch = h.reduce((max, p) => {
+    const maxDurationMatch = recordsHistory.reduce((max, p) => {
         if (!p.startTime || !p.endTime) return max;
         const start = new Date(p.startTime);
         const end = new Date(p.endTime);
@@ -1245,7 +1252,7 @@ function renderStatsExtended() {
         return duration > max.val ? { val: duration, match: p } : max;
     }, { val: -1, match: null });
 
-    // Generar html para las tarjetas sin nombres de equipos
+    // Generar html para las tarjetas
     let recordsHtml = `
         <div class="stats-ext-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -1258,33 +1265,33 @@ function renderStatsExtended() {
 
     let recordCount = 0;
 
-    if (maxDiffMatch.val >= 0 && maxDiffMatch.match) {
+    if (maxScoreMatch.val >= 0 && maxScoreMatch.match) {
         recordCount++;
         recordsHtml += `
             <div class="stats-ext-record-card">
-                <div class="stats-ext-record-val">${maxDiffMatch.val} pts</div>
-                <div class="stats-ext-record-lbl">Victoria Más Amplia</div>
+                <div class="stats-ext-record-val">${maxScoreMatch.val} PTS</div>
+                <div class="stats-ext-record-lbl">Mayor Puntuación</div>
             </div>
         `;
     }
 
-    if (maxHandsMatch.val >= 0 && maxHandsMatch.match) {
+    if (maxDiffMatch.val >= 0 && maxDiffMatch.match) {
         recordCount++;
         recordsHtml += `
             <div class="stats-ext-record-card">
-                <div class="stats-ext-record-val">${maxHandsMatch.val} manos</div>
-                <div class="stats-ext-record-lbl">Partida Más Disputada</div>
+                <div class="stats-ext-record-val">${maxDiffMatch.val} PTS</div>
+                <div class="stats-ext-record-lbl">Mayor Diferencia</div>
             </div>
         `;
     }
 
     if (maxDurationMatch.val >= 0 && maxDurationMatch.match) {
         recordCount++;
-        const durationStr = fmtRecordDuration(maxDurationMatch.val);
+        const durationStr = fmtRecordDuration(maxDurationMatch.val).toUpperCase();
         recordsHtml += `
             <div class="stats-ext-record-card">
                 <div class="stats-ext-record-val">${durationStr}</div>
-                <div class="stats-ext-record-lbl">Partida más larga</div>
+                <div class="stats-ext-record-lbl">Partida Más Larga</div>
             </div>
         `;
     }
