@@ -2287,4 +2287,145 @@ body {
   aspect-ratio: 9 / 16;
   max-width: 213px;   /* 380px × (9/16) */
 }
+
+/* ─── Premium Stats Extensions ───────────────────────────────────── */
+.stats-ext-section {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stats-ext-header {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    color: var(--text-sub);
+    text-transform: uppercase;
+    padding: 16px 16px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-ext-header svg {
+    color: var(--text-sub);
+    flex-shrink: 0;
+}
+
+/* Hoy Section Grid */
+.stats-ext-hoy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 0 16px;
+}
+
+/* Parejas Dominantes */
+.stats-ext-pair-row {
+    background: var(--bg2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+}
+
+.stats-ext-pair-row:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.stats-ext-pair-row.stats-ext-dominant {
+    border-left: 3px solid var(--gold);
+    background: rgba(240, 180, 41, 0.03);
+}
+
+.stats-ext-pair-name {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.stats-ext-pair-stats {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-sub);
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.stats-ext-pair-stats .stats-ext-v {
+    color: var(--neon);
+    font-weight: 600;
+}
+
+.stats-ext-pair-stats .stats-ext-d {
+    color: var(--t2);
+    font-weight: 600;
+}
+
+.stats-ext-pair-pct {
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    min-width: 45px;
+    text-align: right;
+    letter-spacing: 1px;
+}
+
+.stats-ext-pair-pct.pct-high {
+    color: var(--gold);
+}
+
+.stats-ext-pair-pct.pct-mid {
+    color: var(--text);
+}
+
+.stats-ext-pair-pct.pct-low {
+    color: var(--t2);
+}
+
+/* Salón de Récords */
+.stats-ext-records-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    padding: 0 16px;
+}
+
+.stats-ext-record-card {
+    background: var(--bg2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 14px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s;
+}
+
+.stats-ext-record-card:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.stats-ext-record-val {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--gold);
+    line-height: 1.1;
+}
+
+.stats-ext-record-lbl {
+    font-size: 0.7rem;
+    color: var(--text-sub);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 

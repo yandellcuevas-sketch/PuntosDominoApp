@@ -1077,25 +1077,251 @@ function updateSoundIcons() {
 // ─── History Screen ───────────────────────────────────────────────
 function renderHistory() {
     renderStats();
+    renderStatsExtended();
     applyHistoryFilters();
 }
 
 function renderStats() {
     const h = state.history;
     $('stat-total').textContent = h.length;
-    $('stat-capis').textContent = h.reduce((a, p) => a + p.capicuas, 0);
+    $('stat-capis').textContent = h.reduce((a, p) => a + (p.capicuas || 0), 0);
     $('stat-lisas').textContent = h.filter(p => p.isLisa).length;
 
     // MVP: player with most wins
     const wins = {};
     h.forEach(p => {
-        p.winnerTeam.players.forEach(pl => {
-            wins[pl] = (wins[pl] || 0) + 1;
-        });
+        if (p.winnerTeam && p.winnerTeam.players) {
+            p.winnerTeam.players.forEach(pl => {
+                wins[pl] = (wins[pl] || 0) + 1;
+            });
+        }
     });
     let mvp = '—', mvpW = 0;
     Object.entries(wins).forEach(([pl, w]) => { if (w > mvpW) { mvp = pl.split(' ')[0]; mvpW = w; } });
     $('stat-mvp').textContent = mvp;
+}
+
+function renderStatsExtended() {
+    const h = state.history;
+    
+    // Si no hay historial, ocultar todo y salir
+    if (!h || h.length === 0) {
+        $('stats-hoy-section').classList.add('hidden');
+        $('stats-parejas-section').classList.add('hidden');
+        $('stats-records-section').classList.add('hidden');
+        return;
+    }
+
+    // 1. Calcular HOY
+    const todayStr = new Date().toDateString();
+    const todayMatches = h.filter(p => {
+        if (!p.startTime) return false;
+        const d = new Date(p.startTime);
+        return !isNaN(d.getTime()) && d.toDateString() === todayStr;
+    });
+
+    if (todayMatches.length > 0) {
+        const totalHoy = todayMatches.length;
+        const lisasHoy = todayMatches.filter(p => p.isLisa).length;
+        const capisHoy = todayMatches.reduce((a, p) => a + (p.capicuas || 0), 0);
+
+        $('stats-hoy-section').innerHTML = `
+            <div class="stats-ext-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Hoy</span>
+            </div>
+            <div class="stats-ext-hoy-grid">
+                <div class="stat-card">
+                    <div class="stat-val" style="color: var(--text);">${totalHoy}</div>
+                    <div class="stat-lbl">Partidas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" style="color: var(--gold);">${lisasHoy}</div>
+                    <div class="stat-lbl">Lisas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val" style="color: var(--neon);">${capisHoy}</div>
+                    <div class="stat-lbl">Capicúas</div>
+                </div>
+            </div>
+        `;
+        $('stats-hoy-section').classList.remove('hidden');
+    } else {
+        $('stats-hoy-section').classList.add('hidden');
+    }
+
+    // 2. Calcular PAREJAS DOMINANTES (solo parejas de exactamente 2 jugadores válidos)
+    function canonicalKey(players) {
+        if (!players || !Array.isArray(players)) return null;
+        const clean = players
+            .filter(p => typeof p === 'string' && p.trim() !== '')
+            .map(p => p.trim());
+        if (clean.length !== 2) return null; // Validar que tenga exactamente 2 jugadores
+        clean.sort((a, b) => a.localeCompare(b));
+        return clean.join(' & ');
+    }
+
+    const coupleMap = {};
+    h.forEach(p => {
+        if (!p.winnerTeam || !p.loserTeam) return;
+        const wKey = canonicalKey(p.winnerTeam.players);
+        const lKey = canonicalKey(p.loserTeam.players);
+        if (wKey) {
+            if (!coupleMap[wKey]) coupleMap[wKey] = { wins: 0, losses: 0, name: wKey };
+            coupleMap[wKey].wins++;
+        }
+        if (lKey) {
+            if (!coupleMap[lKey]) coupleMap[lKey] = { wins: 0, losses: 0, name: lKey };
+            coupleMap[lKey].losses++;
+        }
+    });
+
+    const couples = Object.values(coupleMap);
+    if (couples.length > 0) {
+        couples.forEach(c => {
+            const total = c.wins + c.losses;
+            c.pct = total > 0 ? Math.round((c.wins / total) * 100) : 0;
+        });
+
+        couples.sort((a, b) => {
+            if (b.wins !== a.wins) return b.wins - a.wins;
+            return b.pct - a.pct;
+        });
+
+        const topCouples = couples.slice(0, 3);
+        let couplesHtml = `
+            <div class="stats-ext-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>Pareja Dominante</span>
+            </div>
+            <div style="padding: 0 16px;">
+        `;
+
+        topCouples.forEach((c, idx) => {
+            const isDominant = idx === 0;
+            const rowClass = isDominant ? 'stats-ext-pair-row stats-ext-dominant' : 'stats-ext-pair-row';
+            
+            // Determinar color semafórico de efectividad
+            let pctClass = 'pct-mid';
+            if (c.pct >= 60) pctClass = 'pct-high';
+            else if (c.pct < 40) pctClass = 'pct-low';
+
+            couplesHtml += `
+                <div class="${rowClass}">
+                    <div class="stats-ext-pair-name">${c.name}</div>
+                    <div class="stats-ext-pair-stats">
+                        <span class="stats-ext-v">${c.wins} V</span>
+                        <span class="stats-ext-sep">-</span>
+                        <span class="stats-ext-d">${c.losses} D</span>
+                    </div>
+                    <div class="stats-ext-pair-pct ${pctClass}">${c.pct}%</div>
+                </div>
+            `;
+        });
+
+        couplesHtml += `</div>`;
+        $('stats-parejas-section').innerHTML = couplesHtml;
+        $('stats-parejas-section').classList.remove('hidden');
+    } else {
+        $('stats-parejas-section').classList.add('hidden');
+    }
+
+    // 3. Calcular SALÓN DE RÉCORDS
+    // Mayor diferencia
+    const maxDiffMatch = h.reduce((max, p) => {
+        if (!p.winnerTeam || !p.loserTeam) return max;
+        const diff = Math.abs(p.winnerTeam.score - p.loserTeam.score);
+        return diff > max.val ? { val: diff, match: p } : max;
+    }, { val: -1, match: null });
+
+    // Más manos
+    const maxHandsMatch = h.reduce((max, p) => {
+        const hands = p.hands || 0;
+        return hands > max.val ? { val: hands, match: p } : max;
+    }, { val: -1, match: null });
+
+    // Partida más larga
+    const maxDurationMatch = h.reduce((max, p) => {
+        if (!p.startTime || !p.endTime) return max;
+        const start = new Date(p.startTime);
+        const end = new Date(p.endTime);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return max;
+        const duration = end.getTime() - start.getTime();
+        if (duration <= 0) return max;
+        return duration > max.val ? { val: duration, match: p } : max;
+    }, { val: -1, match: null });
+
+    // Generar html para las tarjetas sin nombres de equipos
+    let recordsHtml = `
+        <div class="stats-ext-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>Salón de Récords</span>
+        </div>
+        <div class="stats-ext-records-grid">
+    `;
+
+    let recordCount = 0;
+
+    if (maxDiffMatch.val >= 0 && maxDiffMatch.match) {
+        recordCount++;
+        recordsHtml += `
+            <div class="stats-ext-record-card">
+                <div class="stats-ext-record-val">${maxDiffMatch.val} pts</div>
+                <div class="stats-ext-record-lbl">Mayor diferencia</div>
+            </div>
+        `;
+    }
+
+    if (maxHandsMatch.val >= 0 && maxHandsMatch.match) {
+        recordCount++;
+        recordsHtml += `
+            <div class="stats-ext-record-card">
+                <div class="stats-ext-record-val">${maxHandsMatch.val} manos</div>
+                <div class="stats-ext-record-lbl">Más manos</div>
+            </div>
+        `;
+    }
+
+    if (maxDurationMatch.val >= 0 && maxDurationMatch.match) {
+        recordCount++;
+        const durationStr = fmtRecordDuration(maxDurationMatch.val);
+        recordsHtml += `
+            <div class="stats-ext-record-card">
+                <div class="stats-ext-record-val">${durationStr}</div>
+                <div class="stats-ext-record-lbl">Partida más larga</div>
+            </div>
+        `;
+    }
+
+    recordsHtml += `</div>`;
+
+    if (recordCount > 0) {
+        $('stats-records-section').innerHTML = recordsHtml;
+        $('stats-records-section').classList.remove('hidden');
+    } else {
+        $('stats-records-section').classList.add('hidden');
+    }
+}
+
+function fmtRecordDuration(ms) {
+    if (ms < 0) return '—';
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    if (mins < 60) {
+        return `${mins} min`;
+    }
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
 }
 
 function applyHistoryFilters() {
