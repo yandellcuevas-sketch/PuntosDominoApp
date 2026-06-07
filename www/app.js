@@ -287,6 +287,17 @@ function saveToHistory() {
     const g = state.game;
     const winner = g.teams[g.winner - 1];
     const loser = g.teams[g.winner === 1 ? 1 : 0];
+
+    const mapPlayerIds = (players) => {
+        if (!players || !Array.isArray(players)) return [];
+        return players.map(p => {
+            if (state.profile.username && state.profile.playerId && p && p.trim().toLowerCase() === state.profile.username.trim().toLowerCase()) {
+                return state.profile.playerId;
+            }
+            return null;
+        });
+    };
+
     const entry = {
         id: g.id,
         name: g.name,
@@ -294,8 +305,18 @@ function saveToHistory() {
         endTime: g.endTime || now(),
         limit: g.limit,
         capiValue: g.capiValue,
-        winnerTeam: { id: g.winner, players: winner.players, score: winner.score },
-        loserTeam: { id: g.winner === 1 ? 2 : 1, players: loser.players, score: loser.score },
+        winnerTeam: { 
+            id: g.winner, 
+            players: winner.players, 
+            score: winner.score,
+            playerIds: mapPlayerIds(winner.players)
+        },
+        loserTeam: { 
+            id: g.winner === 1 ? 2 : 1, 
+            players: loser.players, 
+            score: loser.score,
+            playerIds: mapPlayerIds(loser.players)
+        },
         hands: g.hands.length,
         capicuas: g.hands.filter(h => h.capi).length,
         isLisa: g.isLisa,
@@ -1317,6 +1338,30 @@ function applyHistoryFilters() {
             items = items.filter(p => p.winnerTeam.players.some(n => n.toLowerCase().includes(search)));
         } else if (filter === 'lost') {
             items = items.filter(p => p.loserTeam.players.some(n => n.toLowerCase().includes(search)));
+        }
+    } else {
+        if (filter === 'won') {
+            items = items.filter(p => {
+                if (state.profile.playerId && p.winnerTeam.playerIds && p.winnerTeam.playerIds.includes(state.profile.playerId)) {
+                    return true;
+                }
+                if (state.profile.username) {
+                    const u = state.profile.username.trim().toLowerCase();
+                    return p.winnerTeam.players.some(n => n.trim().toLowerCase() === u);
+                }
+                return false;
+            });
+        } else if (filter === 'lost') {
+            items = items.filter(p => {
+                if (state.profile.playerId && p.loserTeam.playerIds && p.loserTeam.playerIds.includes(state.profile.playerId)) {
+                    return true;
+                }
+                if (state.profile.username) {
+                    const u = state.profile.username.trim().toLowerCase();
+                    return p.loserTeam.players.some(n => n.trim().toLowerCase() === u);
+                }
+                return false;
+            });
         }
     }
 
