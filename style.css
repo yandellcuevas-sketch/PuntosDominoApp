@@ -669,7 +669,8 @@ body {
     align-items: center;
 }
 
-@media(max-width:400px) {
+/* Scoreboard columna solo en teléfonos ≤340px (muy pequeños) */
+@media(max-width:340px) {
     .scoreboard {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
@@ -2428,4 +2429,29 @@ body {
     letter-spacing: 1px;
 }
 
-
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE — compresión suave ≤ 375px
+   Ajuste mínimo e imperceptible: solo reduce el espacio entre
+   bloques, no los elementos táctiles ni las fuentes.
+   Los botones, cards y números quedan idénticos a los de 390px+.
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 375px) {
+
+    /* ── Scoreboard: gap y padding ligeramente menores ── */
+    .scoreboard {
+        padding: 16px 14px 10px;
+        gap: 10px;
+    }
+
+    /* ── Input panel: respiración mínimamente reducida ── */
+    .input-panel {
+        padding: 18px;
+        gap: 12px;
+        margin: 0 14px 14px;
+    }
+
+    /* ── Input manual: min-width ajustado para evitar wrap ── */
+    .manual-pts-wide {
+        min-width: 130px;
+    }
+}
