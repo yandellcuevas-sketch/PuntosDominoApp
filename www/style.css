@@ -2430,68 +2430,28 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   RESPONSIVE COMPRESSION — pantallas pequeñas ≤ 375px
-   Solo reduce tamaños proporcionalmente.
-   No cambia estructura, grid, flex-direction ni orden de elementos.
-   Afecta únicamente componentes de la pantalla de juego (#screen-game).
+   RESPONSIVE — compresión suave ≤ 375px
+   Ajuste mínimo e imperceptible: solo reduce el espacio entre
+   bloques, no los elementos táctiles ni las fuentes.
+   Los botones, cards y números quedan idénticos a los de 390px+.
    ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 375px) {
 
-    /* ── Scoreboard: reducir espaciado vertical ── */
+    /* ── Scoreboard: gap y padding ligeramente menores ── */
     .scoreboard {
-        padding: 12px 12px 8px;
-        gap: 8px;
-    }
-
-    /* ── Score cards: padding más compacto ── */
-    .score-card {
-        padding: 12px 10px;
-    }
-
-    /* ── Número de score: fuente y margen reducidos ── */
-    .score-number {
-        font-size: clamp(2.2rem, 9vw, 3.5rem);
-        margin: 2px 0 6px;
-    }
-
-    /* ── Input panel: padding y gap compactos ── */
-    .input-panel {
-        padding: 14px;
+        padding: 16px 14px 10px;
         gap: 10px;
-        margin: 0 12px 12px;
     }
 
-    /* ── Botones de selección de equipo ── */
-    .team-sel-btn {
-        padding: 9px 6px;
-        font-size: 0.8rem;
+    /* ── Input panel: respiración mínimamente reducida ── */
+    .input-panel {
+        padding: 18px;
+        gap: 12px;
+        margin: 0 14px 14px;
     }
 
-    /* ── Quick action buttons ── */
-    .qbtn {
-        padding: 10px 18px;
-        font-size: 0.88rem;
-    }
-
-    .qbtn-featured {
-        padding: 10px 24px;
-        font-size: 0.95rem;
-    }
-
-    /* ── Scanner button ── */
-    .qbtn-scan {
-        padding: 10px 18px;
-        font-size: 0.85rem;
-    }
-
-    /* ── Input manual: min-width reducido para evitar wrap en 320px ── */
+    /* ── Input manual: min-width ajustado para evitar wrap ── */
     .manual-pts-wide {
-        min-width: 120px;
-    }
-
-    /* ── Topbar: padding vertical comprimido ── */
-    .game-topbar {
-        padding-top: max(8px, env(safe-area-inset-top));
-        padding-bottom: 8px;
+        min-width: 130px;
     }
 }
