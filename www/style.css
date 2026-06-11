@@ -669,7 +669,8 @@ body {
     align-items: center;
 }
 
-@media(max-width:400px) {
+/* Scoreboard columna solo en teléfonos ≤340px (muy pequeños) */
+@media(max-width:340px) {
     .scoreboard {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
@@ -2428,4 +2429,69 @@ body {
     letter-spacing: 1px;
 }
 
-
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE COMPRESSION — pantallas pequeñas ≤ 375px
+   Solo reduce tamaños proporcionalmente.
+   No cambia estructura, grid, flex-direction ni orden de elementos.
+   Afecta únicamente componentes de la pantalla de juego (#screen-game).
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 375px) {
+
+    /* ── Scoreboard: reducir espaciado vertical ── */
+    .scoreboard {
+        padding: 12px 12px 8px;
+        gap: 8px;
+    }
+
+    /* ── Score cards: padding más compacto ── */
+    .score-card {
+        padding: 12px 10px;
+    }
+
+    /* ── Número de score: fuente y margen reducidos ── */
+    .score-number {
+        font-size: clamp(2.2rem, 9vw, 3.5rem);
+        margin: 2px 0 6px;
+    }
+
+    /* ── Input panel: padding y gap compactos ── */
+    .input-panel {
+        padding: 14px;
+        gap: 10px;
+        margin: 0 12px 12px;
+    }
+
+    /* ── Botones de selección de equipo ── */
+    .team-sel-btn {
+        padding: 9px 6px;
+        font-size: 0.8rem;
+    }
+
+    /* ── Quick action buttons ── */
+    .qbtn {
+        padding: 10px 18px;
+        font-size: 0.88rem;
+    }
+
+    .qbtn-featured {
+        padding: 10px 24px;
+        font-size: 0.95rem;
+    }
+
+    /* ── Scanner button ── */
+    .qbtn-scan {
+        padding: 10px 18px;
+        font-size: 0.85rem;
+    }
+
+    /* ── Input manual: min-width reducido para evitar wrap en 320px ── */
+    .manual-pts-wide {
+        min-width: 120px;
+    }
+
+    /* ── Topbar: padding vertical comprimido ── */
+    .game-topbar {
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-bottom: 8px;
+    }
+}
