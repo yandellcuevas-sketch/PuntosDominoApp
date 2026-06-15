@@ -715,6 +715,44 @@
         </div>
     </div>
 
+    <!-- ───────────────────────────── ONBOARDING MODAL ───────────────────────────── -->
+    <div id="modal-onboarding" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+        <div class="modal-card onboarding-card">
+
+            <!-- Header -->
+            <div class="onboarding-header">
+                <span class="onboarding-domino-icon" aria-hidden="true">🁣</span>
+                <h2 class="onboarding-title" id="onboarding-title">¿Cómo te llaman?</h2>
+                <p class="onboarding-subtitle">Este nombre aparecerá en tus partidas y estadísticas.</p>
+            </div>
+
+            <!-- Input vivo con typing animation -->
+            <div class="onboarding-input-wrap">
+                <input
+                    type="text"
+                    id="onboarding-username"
+                    class="field-input onboarding-input"
+                    placeholder=""
+                    maxlength="20"
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    aria-label="Tu nombre o apodo"
+                />
+                <span class="onboarding-cursor" aria-hidden="true">|</span>
+            </div>
+
+            <!-- Leyenda -->
+            <p class="onboarding-legend">Solo en este dispositivo.&nbsp;&nbsp;Sin cuenta.</p>
+
+            <!-- Botón -->
+            <button id="btn-onboarding-continue" class="btn-primary btn-full onboarding-btn" disabled>
+                Continuar
+            </button>
+
+        </div>
+    </div>
+
     <!-- ───────────────────────────── LISAA TOAST ───────────────────────────── -->
     <div id="lisa-toast" class="lisa-toast hidden">
         <span class="lisa-fire">🔥</span>

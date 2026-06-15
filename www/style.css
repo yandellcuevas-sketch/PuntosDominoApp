@@ -2455,3 +2455,118 @@ body {
         min-width: 130px;
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ONBOARDING MODAL
+   Usa las mismas variables y clases base del proyecto.
+   Completamente aislado — no afecta ninguna otra pantalla.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Card ligeramente más estrecha para que se sienta íntimo */
+.onboarding-card {
+    max-width: 360px;
+    text-align: center;
+    padding: 36px 28px 32px;
+}
+
+/* Header */
+.onboarding-header {
+    margin-bottom: 28px;
+}
+
+.onboarding-domino-icon {
+    display: block;
+    font-size: 2.6rem;
+    line-height: 1;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 12px rgba(42, 240, 255, 0.35));
+}
+
+.onboarding-title {
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    letter-spacing: 2px;
+    color: var(--text);
+    margin: 0 0 8px;
+    line-height: 1.1;
+}
+
+.onboarding-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-sub);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Input + cursor wrapper */
+.onboarding-input-wrap {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.onboarding-input {
+    font-size: 1.05rem;
+    padding: 13px 40px 13px 14px; /* espacio para cursor */
+    text-align: left;
+    caret-color: var(--neon);
+}
+
+.onboarding-input:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 0 3px rgba(42, 240, 255, 0.12);
+}
+
+/* Cursor parpadeante (se oculta cuando el usuario escribe o hace focus) */
+.onboarding-cursor {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--neon);
+    font-size: 1.1rem;
+    font-weight: 300;
+    pointer-events: none;
+    animation: onboarding-blink 0.9s step-end infinite;
+    transition: opacity 0.1s;
+}
+
+.onboarding-cursor.hidden-cursor {
+    opacity: 0;
+    animation: none;
+}
+
+@keyframes onboarding-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+/* Leyenda */
+.onboarding-legend {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0 0 24px;
+    letter-spacing: 0.3px;
+}
+
+/* Botón Continuar — transición suave al habilitarse */
+.onboarding-btn {
+    transition: opacity 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
+}
+
+.onboarding-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.onboarding-btn:not(:disabled) {
+    opacity: 1;
+}
+
+/* ── prefers-reduced-motion: deshabilitar animación de escritura ── */
+@media (prefers-reduced-motion: reduce) {
+    .onboarding-cursor {
+        animation: none;
+        opacity: 1;
+    }
+}
