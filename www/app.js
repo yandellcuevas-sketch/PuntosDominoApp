@@ -2063,7 +2063,7 @@ function initOnboarding() {
     if (!modal || !input || !btnCont) return;
 
     // ── Typing animation setup ────────────────────────────────────
-    const demoNames   = ['Tu nombre', 'Jugador 1', 'Carlos'];
+    const demoNames   = ['Carlos', 'María', 'Jugador 1'];
     let   nameIndex   = 0;
     let   charIndex   = 0;
     let   isDeleting  = false;
@@ -2078,7 +2078,7 @@ function initOnboarding() {
         if (!isDeleting) {
             // Escribir
             charIndex++;
-            input.placeholder = current.slice(0, charIndex) + '|';
+            input.placeholder = current.slice(0, charIndex);
             if (charIndex >= current.length) {
                 // Pausa al final antes de borrar
                 isDeleting = true;
@@ -2089,7 +2089,7 @@ function initOnboarding() {
         } else {
             // Borrar
             charIndex--;
-            input.placeholder = current.slice(0, charIndex) + '|';
+            input.placeholder = current.slice(0, charIndex);
             if (charIndex === 0) {
                 isDeleting = false;
                 nameIndex  = (nameIndex + 1) % demoNames.length;
