@@ -2143,19 +2143,25 @@ function initOnboarding() {
         // Guardar (mantiene playerId y resto del perfil)
         localSaveProfile(state.profile);
 
-        // Feedback visual ~300ms
+        // Feedback visual durante 1500ms
         btnCont.textContent = `✓ Perfecto, ${username}`;
         btnCont.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
 
         setTimeout(() => {
-            modal.classList.add('hidden');
-            // Restaurar botón para posible reapertura
-            btnCont.textContent = 'Continuar';
-            btnCont.style.background = '';
+            // Aplicar fade out suave de 250ms
+            modal.classList.add('fade-out');
 
-            // Actualizar UI (avatar + autocompletar t1p1)
-            updateProfileUI();
-        }, 300);
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('fade-out');
+                // Restaurar botón para posible reapertura
+                btnCont.textContent = 'Continuar';
+                btnCont.style.background = '';
+
+                // Actualizar UI (avatar + autocompletar t1p1)
+                updateProfileUI();
+            }, 250);
+        }, 1500);
     });
 
     // ── Mostrar modal ─────────────────────────────────────────────

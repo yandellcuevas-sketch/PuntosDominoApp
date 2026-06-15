@@ -2543,4 +2543,29 @@ body {
 
 .onboarding-btn:not(:disabled) {
     opacity: 1;
+}
+
+/* ── Transiciones de Cierre de Onboarding ── */
+#modal-onboarding {
+    transition: opacity 250ms ease, visibility 250ms ease;
+    opacity: 1;
+    visibility: visible;
+}
+
+#modal-onboarding.hidden {
+    display: none !important;
+}
+
+#modal-onboarding .onboarding-card {
+    transition: transform 250ms cubic-bezier(0.25, 1, 0.5, 1);
+    transform: translateY(0);
+}
+
+#modal-onboarding.fade-out {
+    opacity: 0;
+    visibility: hidden;
+}
+
+#modal-onboarding.fade-out .onboarding-card {
+    transform: translateY(-8px);
 }
