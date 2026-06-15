@@ -2465,6 +2465,9 @@ body {
 /* Card ligeramente más estrecha para que se sienta íntimo */
 .onboarding-card {
     max-width: 360px;
+    max-height: 90vh;          /* landscape + teclado virtual safety */
+    overflow-y: auto;          /* scroll interno si el viewport es bajo */
+    -webkit-overflow-scrolling: touch;
     text-align: center;
     padding: 36px 28px 32px;
 }
@@ -2542,10 +2545,12 @@ body {
 
 /* Leyenda */
 .onboarding-legend {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
+    line-height: 1.55;
     margin: 0 0 24px;
-    letter-spacing: 0.3px;
+    text-align: left;
+    letter-spacing: 0.1px;
 }
 
 /* Botón Continuar — transición suave al habilitarse */

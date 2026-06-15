@@ -2064,7 +2064,7 @@ function initOnboarding() {
     if (!modal || !input || !btnCont) return;
 
     // ── Typing animation setup ────────────────────────────────────
-    const demoNames   = ['Carlos', 'María', 'Luis', 'Ana', 'Pedro', 'Sofia'];
+    const demoNames   = ['Tu nombre', 'Jugador 1', 'Carlos'];
     let   nameIndex   = 0;
     let   charIndex   = 0;
     let   isDeleting  = false;
