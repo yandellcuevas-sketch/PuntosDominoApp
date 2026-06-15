@@ -2059,7 +2059,6 @@ function initScannerButton() {
 function initOnboarding() {
     const modal    = $('modal-onboarding');
     const input    = $('onboarding-username');
-    const cursor   = modal ? modal.querySelector('.onboarding-cursor') : null;
     const btnCont  = $('btn-onboarding-continue');
     if (!modal || !input || !btnCont) return;
 
@@ -2079,7 +2078,7 @@ function initOnboarding() {
         if (!isDeleting) {
             // Escribir
             charIndex++;
-            input.placeholder = current.slice(0, charIndex);
+            input.placeholder = current.slice(0, charIndex) + '|';
             if (charIndex >= current.length) {
                 // Pausa al final antes de borrar
                 isDeleting = true;
@@ -2090,7 +2089,7 @@ function initOnboarding() {
         } else {
             // Borrar
             charIndex--;
-            input.placeholder = current.slice(0, charIndex);
+            input.placeholder = current.slice(0, charIndex) + '|';
             if (charIndex === 0) {
                 isDeleting = false;
                 nameIndex  = (nameIndex + 1) % demoNames.length;
@@ -2106,7 +2105,6 @@ function initOnboarding() {
         userTookOver = true;
         clearTimeout(typingTimer);
         input.placeholder = 'Tu nombre o apodo';
-        if (cursor) cursor.classList.add('hidden-cursor');
     }
 
     // Detener ante cualquier interacción del usuario
