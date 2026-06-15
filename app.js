@@ -1883,6 +1883,12 @@ function init() {
     // 1. Cargar todo desde localStorage — instantáneo, nunca falla
     loadStorage();
 
+    // 1b. Onboarding: solo si no hay username y no es un deep link de espectador
+    const _hasSpectatorCode = !!(new URLSearchParams(window.location.search).get('code'));
+    if (!_hasSpectatorCode && !state.profile?.username?.trim()) {
+        initOnboarding();
+    }
+
     // 2. Inicializar controles de UI (no dependen de red)
     initLoginScreen();
     initJoinControls();
@@ -2047,6 +2053,123 @@ function initScannerButton() {
         if (state.isSpectator) return;
         window.DominoScanner.open();
     });
+}
+
+// ─── Onboarding Modal ─────────────────────────────────────────────
+function initOnboarding() {
+    const modal    = $('modal-onboarding');
+    const input    = $('onboarding-username');
+    const btnCont  = $('btn-onboarding-continue');
+    if (!modal || !input || !btnCont) return;
+
+    // ── Typing animation setup ────────────────────────────────────
+    const demoNames   = ['Carlos', 'María', 'Jugador 1'];
+    let   nameIndex   = 0;
+    let   charIndex   = 0;
+    let   isDeleting  = false;
+    let   typingTimer = null;
+    let   userTookOver = false;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function typeStep() {
+        if (userTookOver) return;
+        const current = demoNames[nameIndex];
+
+        if (!isDeleting) {
+            // Escribir
+            charIndex++;
+            input.placeholder = current.slice(0, charIndex);
+            if (charIndex >= current.length) {
+                // Pausa al final antes de borrar
+                isDeleting = true;
+                typingTimer = setTimeout(typeStep, 1400);
+                return;
+            }
+            typingTimer = setTimeout(typeStep, 110);
+        } else {
+            // Borrar
+            charIndex--;
+            input.placeholder = current.slice(0, charIndex);
+            if (charIndex === 0) {
+                isDeleting = false;
+                nameIndex  = (nameIndex + 1) % demoNames.length;
+                typingTimer = setTimeout(typeStep, 500);
+                return;
+            }
+            typingTimer = setTimeout(typeStep, 60);
+        }
+    }
+
+    function stopTyping() {
+        if (userTookOver) return;
+        userTookOver = true;
+        clearTimeout(typingTimer);
+        input.placeholder = 'Tu nombre o apodo';
+    }
+
+    // Detener ante cualquier interacción del usuario
+    ['focus', 'click', 'touchstart', 'keydown'].forEach(evt => {
+        input.addEventListener(evt, stopTyping, { once: true });
+    });
+
+    // ── Habilitar botón cuando haya texto ────────────────────────
+    input.addEventListener('input', () => {
+        const hasText = input.value.trim().length > 0;
+        btnCont.disabled = !hasText;
+    });
+
+    // ── Guardar al pulsar Continuar ───────────────────────────────
+    btnCont.addEventListener('click', () => {
+        const username = input.value.trim();
+        if (!username) return;
+
+        // Mantener aliases, evitar duplicados
+        if (!state.profile.aliases) state.profile.aliases = [];
+        if (state.profile.username) {
+            const oldLower = state.profile.username.trim().toLowerCase();
+            if (!state.profile.aliases.map(a => a.trim().toLowerCase()).includes(oldLower)) {
+                state.profile.aliases.push(state.profile.username);
+            }
+        }
+        state.profile.username = username;
+        const newLower = username.toLowerCase().trim();
+        if (!state.profile.aliases.map(a => a.trim().toLowerCase()).includes(newLower)) {
+            state.profile.aliases.push(username);
+        }
+        if (state.profile.aliases.length > 5) {
+            state.profile.aliases = state.profile.aliases.slice(-5);
+        }
+
+        // Guardar (mantiene playerId y resto del perfil)
+        localSaveProfile(state.profile);
+
+        // Feedback visual ~300ms
+        btnCont.textContent = `✓ Perfecto, ${username}`;
+        btnCont.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            // Restaurar botón para posible reapertura
+            btnCont.textContent = 'Continuar';
+            btnCont.style.background = '';
+
+            // Actualizar UI (avatar + autocompletar t1p1)
+            updateProfileUI();
+        }, 300);
+    });
+
+    // ── Mostrar modal ─────────────────────────────────────────────
+    modal.classList.remove('hidden');
+
+    // Iniciar typing animation (a menos que prefer-reduced-motion)
+    if (!reducedMotion) {
+        typingTimer = setTimeout(typeStep, 700);
+    } else {
+        input.placeholder = 'Tu nombre o apodo';
+    }
+
+    // Foco automático con pequeño delay para que el modal esté visible
+    setTimeout(() => input.focus(), 350);
 }
 
 // ─── Share Button ─────────────────────────────────────────────────────

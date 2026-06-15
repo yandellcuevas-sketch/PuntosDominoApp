@@ -715,6 +715,43 @@
         </div>
     </div>
 
+    <!-- ───────────────────────────── ONBOARDING MODAL ───────────────────────────── -->
+    <div id="modal-onboarding" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+        <div class="modal-card onboarding-card">
+
+            <!-- Header -->
+            <div class="onboarding-header">
+                <img src="logodomino.png" alt="DominoScorePro Logo" class="onboarding-logo" />
+                <h2 class="onboarding-title" id="onboarding-title">¿Cómo te llaman?</h2>
+                <p class="onboarding-subtitle">Tu nombre identificará tus partidas, estadísticas y récords.</p>
+            </div>
+
+            <!-- Input vivo con typing animation -->
+            <div class="onboarding-input-wrap">
+                <input
+                    type="text"
+                    id="onboarding-username"
+                    class="field-input onboarding-input"
+                    placeholder=""
+                    maxlength="20"
+                    autocomplete="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    aria-label="Tu nombre o apodo"
+                />
+            </div>
+
+            <!-- Leyenda -->
+            <p class="onboarding-legend">Se usará para tus partidas, estadísticas y récords.<br>Solo se guarda en este dispositivo.</p>
+
+            <!-- Botón -->
+            <button id="btn-onboarding-continue" class="btn-primary btn-full onboarding-btn" disabled>
+                Continuar
+            </button>
+
+        </div>
+    </div>
+
     <!-- ───────────────────────────── LISAA TOAST ───────────────────────────── -->
     <div id="lisa-toast" class="lisa-toast hidden">
         <span class="lisa-fire">🔥</span>
