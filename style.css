@@ -891,8 +891,10 @@ body {
 }
 
 .quick-section-icon {
-    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
     line-height: 1;
+    color: var(--text-sub);
 }
 
 .quick-section-title {
@@ -907,6 +909,16 @@ body {
 .quick-btns-single {
     display: flex;
     gap: 8px;
+}
+
+/* ── Escanear Mano: oculto visualmente (funcionalidad intacta para versiones futuras) ── */
+#btn-scan-tiles {
+    display: none !important;
+}
+
+/* Cuando el botón scan está oculto, el featured toma todo el ancho */
+.quick-btns-single .qbtn-featured {
+    flex: 1;
 }
 
 .qbtn {
