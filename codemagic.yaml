@@ -13,6 +13,9 @@ workflows:
       vars:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.yandell.dominoscore
     scripts:
       - name: Install npm dependencies
         script: npm install
