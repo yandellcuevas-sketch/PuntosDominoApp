@@ -2143,6 +2143,9 @@ function initOnboarding() {
         // Guardar (mantiene playerId y resto del perfil)
         localSaveProfile(state.profile);
 
+        // Migrar partidas antiguas: asociar playerId al nombre recién ingresado
+        migrateHistoryPlayerIds(state.profile.username, state.profile.playerId);
+
         // Feedback visual durante 1500ms
         btnCont.textContent = `✓ Perfecto, ${username}`;
         btnCont.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
@@ -2176,6 +2179,66 @@ function initOnboarding() {
 
     // Foco automático con pequeño delay para que el modal esté visible
     setTimeout(() => input.focus(), 350);
+}
+
+// ─── Migración de historial existente ────────────────────────────────────
+/**
+ * Recorre domino_history y asocia el playerId del usuario a las posiciones
+ * donde aparezca su username (comparación case-insensitive).
+ *
+ * Reglas:
+ *  - Solo escribe en playerIds[i] si el valor actual es null o undefined.
+ *  - Si playerIds no existe en la entrada, lo crea con nulls.
+ *  - No modifica scores, names, fechas, hands, capicuas, isLisa ni límites.
+ *  - Idempotente: puede llamarse múltiples veces sin duplicar ni romper datos.
+ *
+ * @param {string} username  Nombre ingresado en onboarding (ya saneado).
+ * @param {string} playerId  ID estable del perfil local.
+ */
+function migrateHistoryPlayerIds(username, playerId) {
+    if (!username || !playerId) return;
+
+    var userLower = username.trim().toLowerCase();
+    var history   = localLoadHistory();
+    if (!history.length) return;
+
+    var changed = false;
+
+    history.forEach(function (entry) {
+        ['winnerTeam', 'loserTeam'].forEach(function (side) {
+            var team = entry[side];
+            if (!team || !Array.isArray(team.players)) return;
+
+            // Crear playerIds si no existe, con nulls del mismo largo que players
+            if (!Array.isArray(team.playerIds)) {
+                team.playerIds = team.players.map(function () { return null; });
+                changed = true;
+            }
+
+            // Asegurar que playerIds tenga el mismo largo que players
+            while (team.playerIds.length < team.players.length) {
+                team.playerIds.push(null);
+                changed = true;
+            }
+
+            team.players.forEach(function (name, i) {
+                if (!name) return;
+                // Solo escribir si la posición está vacía (idempotente)
+                var isEmpty = (team.playerIds[i] === null || team.playerIds[i] === undefined);
+                if (isEmpty && name.trim().toLowerCase() === userLower) {
+                    team.playerIds[i] = playerId;
+                    changed = true;
+                }
+            });
+        });
+    });
+
+    if (changed) {
+        localSaveHistory(history);
+        // Sincronizar state.history para que el resto de la sesión lo refleje
+        state.history = history;
+        console.log('[app] migrateHistoryPlayerIds: historial actualizado para', username);
+    }
 }
 
 // ─── Share Button ─────────────────────────────────────────────────────
