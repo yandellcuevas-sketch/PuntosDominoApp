@@ -2163,6 +2163,12 @@ function initOnboarding() {
 
                 // Actualizar UI (avatar + autocompletar t1p1)
                 updateProfileUI();
+
+                // Mostrar modal de vinculación de aliases si hay candidatos
+                var _candidates = getHistoryNameCandidates();
+                if (_candidates.length > 0) {
+                    showAliasMigrationModal(_candidates);
+                }
             }, 250);
         }, 1500);
     });
@@ -2179,6 +2185,132 @@ function initOnboarding() {
 
     // Foco automático con pequeño delay para que el modal esté visible
     setTimeout(() => input.focus(), 350);
+}
+
+// ─── Candidatos de nombres históricos para vinculación ──────────────────
+/**
+ * Extrae nombres únicos del historial ordenados por frecuencia.
+ * Excluye: vacíos, el username actual, aliases ya guardados.
+ * Límite: 8 candidatos.
+ *
+ * @returns {string[]}  Array de nombres originales (sin normalizar), ordenados por frecuencia.
+ */
+function getHistoryNameCandidates() {
+    var history = localLoadHistory();
+    if (!history.length) return [];
+
+    var userLower    = (state.profile.username || '').trim().toLowerCase();
+    var aliasesLower = (state.profile.aliases  || []).map(function (a) { return a.trim().toLowerCase(); });
+
+    var freq = {}; // lower → { original, count }
+
+    history.forEach(function (entry) {
+        ['winnerTeam', 'loserTeam'].forEach(function (side) {
+            var team = entry[side];
+            if (!team || !Array.isArray(team.players)) return;
+            team.players.forEach(function (name) {
+                if (!name || !name.trim()) return;
+                var lower = name.trim().toLowerCase();
+                if (lower === userLower)           return; // ya es el username
+                if (aliasesLower.includes(lower))  return; // ya es un alias
+                if (!freq[lower]) freq[lower] = { original: name.trim(), count: 0 };
+                freq[lower].count++;
+            });
+        });
+    });
+
+    return Object.values(freq)
+        .sort(function (a, b) { return b.count - a.count; })
+        .slice(0, 8)
+        .map(function (c) { return c.original; });
+}
+
+// ─── Modal de vinculación de aliases ─────────────────────────────────────
+/**
+ * Muestra el modal de vinculación de aliases.
+ * - Genera chips a partir de los candidatos.
+ * - Al confirmar: agrega aliases a profile, corre migración por cada uno.
+ * - Al saltar: cierra sin modificar nada.
+ *
+ * @param {string[]} candidates  Nombres candidatos (ya filtrados, máx 8).
+ */
+function showAliasMigrationModal(candidates) {
+    if (!candidates || !candidates.length) return;
+
+    var modal     = document.getElementById('modal-alias-link');
+    var container = document.getElementById('alias-chips-container');
+    var btnConfirm = document.getElementById('btn-alias-link-confirm');
+    var btnSkip   = document.getElementById('btn-alias-link-skip');
+    if (!modal || !container || !btnConfirm || !btnSkip) return;
+
+    // Limpiar chips previos (idempotencia si se llama más de una vez)
+    container.innerHTML = '';
+
+    // Generar chips
+    candidates.forEach(function (name) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'alias-chip';
+        chip.textContent = name;
+        chip.dataset.name = name;
+        chip.addEventListener('click', function () {
+            chip.classList.toggle('selected');
+        });
+        container.appendChild(chip);
+    });
+
+    function _closeModal() {
+        modal.classList.add('hidden');
+        // Limpiar listeners clonando los botones
+        var newConfirm = btnConfirm.cloneNode(true);
+        var newSkip    = btnSkip.cloneNode(true);
+        btnConfirm.parentNode.replaceChild(newConfirm, btnConfirm);
+        btnSkip.parentNode.replaceChild(newSkip, btnSkip);
+    }
+
+    // Saltar — no modifica nada
+    btnSkip.addEventListener('click', function () {
+        _closeModal();
+    });
+
+    // Vincular seleccionados
+    btnConfirm.addEventListener('click', function () {
+        var selected = Array.from(container.querySelectorAll('.alias-chip.selected'))
+            .map(function (c) { return c.dataset.name; })
+            .filter(Boolean);
+
+        if (selected.length === 0) {
+            // Nada seleccionado → cerrar sin modificar
+            _closeModal();
+            return;
+        }
+
+        // Agregar aliases al perfil (sin duplicados)
+        if (!state.profile.aliases) state.profile.aliases = [];
+        selected.forEach(function (name) {
+            var lower = name.trim().toLowerCase();
+            var already = state.profile.aliases.some(function (a) {
+                return a.trim().toLowerCase() === lower;
+            });
+            if (!already) state.profile.aliases.push(name.trim());
+        });
+
+        // Respetar límite de 5 aliases
+        if (state.profile.aliases.length > 5) {
+            state.profile.aliases = state.profile.aliases.slice(-5);
+        }
+
+        localSaveProfile(state.profile);
+
+        // Ejecutar migración de playerIds para cada alias seleccionado
+        selected.forEach(function (name) {
+            migrateHistoryPlayerIds(name, state.profile.playerId);
+        });
+
+        _closeModal();
+    });
+
+    modal.classList.remove('hidden');
 }
 
 // ─── Migración de historial existente ────────────────────────────────────
